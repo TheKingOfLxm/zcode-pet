@@ -37,10 +37,12 @@
 
 ### 1. 安装 ZCode 插件
 
-打开 ZCode：**插件市场 → 添加 → 添加插件市场**，二选一：
+打开 ZCode：**插件市场 → 添加 → 添加插件市场**，三选一：
 
-- 粘贴本仓库地址：`https://github.com/TheKingOfLxm/zcode-pet`（支持远程源时）
-- 或 `git clone` 本仓库后粘贴克隆目录的绝对路径（保底方式）
+- 粘贴本仓库地址：`https://github.com/TheKingOfLxm/zcode-pet`（支持 GitHub 源时）
+- 粘贴本仓库的 `plugins/` 子目录（克隆版或开发目录均可——**别填仓库根目录**：
+  开发目录里的 `node_modules` 带符号链接，Windows 复制会报 EPERM）
+- 或 `git clone` 本仓库后粘贴克隆目录的绝对路径（克隆版没有 node_modules，根目录也能用）
 
 然后在该市场里安装 **ZCode 桌宠桥 / zcode-pet** 插件。
 
