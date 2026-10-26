@@ -74,11 +74,16 @@ node lib/standalone.js
 
 看到 `独立模式服务已监听 http://127.0.0.1:3080/` 与宠物列表即成功（端口占用自动顺延）。
 首次以 `display: "both"`（默认）运行会自动下载 Electron 到 `~/.zcode/electron` 弹出透明小窗。
+本仓库已包含构建好的 `dsh-pet/lib/`，克隆后可直接 `node lib/standalone.js` 跳过构建。
 
-### 2. 安装 ZCode 插件（`plugins/` 目录）
+### 2. 安装 ZCode 插件（市场根 = 本仓库根目录）
 
-1. 打开 ZCode：**插件市场 → 添加 → 添加插件市场**，粘贴本仓库 `plugins/` 目录的绝对路径（例如 `E:\dsh-pet-main\plugins`）。
-2. 在该市场（`dev-zcode-pet`）里安装 **ZCode 桌宠桥 / zcode-pet**。
+市场清单在仓库根目录的 `marketplace.json`（发布版：`https://github.com/TheKingOfLxm/zcode-pet`）：
+
+1. 打开 ZCode：**插件市场 → 添加 → 添加插件市场**：
+   - 远程：粘贴仓库地址 `https://github.com/TheKingOfLxm/zcode-pet`（若当前版本支持远程源）；
+   - 或本地：`git clone` 后粘贴克隆目录的绝对路径（保底方式）。
+2. 在 `zcode-pet` 市场里安装 **ZCode 桌宠桥 / zcode-pet**。
 3. 新开一个 ZCode 会话即可看到效果。
 
 ### 3. 告诉插件引擎在哪（一次性）
