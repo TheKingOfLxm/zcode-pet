@@ -1,0 +1,4297 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>桌宠控制台</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --side: #fbfbfd;
+      --text: #1c2024;
+      --muted: #6b7280;
+      --faint: #9aa3af;
+      --border: #e5e7eb;
+      --border-strong: #d3d8de;
+      --accent: #4f46e5;
+      --accent-soft: #eef0ff;
+      --ok: #15803d;
+      --ok-soft: #eaf7ee;
+      --warn: #b45309;
+      --warn-soft: #fdf5e6;
+      --bad: #b91c1c;
+      --bad-soft: #fdeeee;
+      --code: #f7f8fa;
+      --radius: 10px;
+      --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 212px minmax(0, 1fr) 296px;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app.no-log { grid-template-columns: 212px minmax(0, 1fr) 0; }
+
+    /* ── 侧栏 ── */
+    .sidebar {
+      background: var(--side);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 16px 16px 14px;
+      font-weight: 650;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+    }
+
+    .brand .logo {
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      display: grid; place-items: center;
+      color: #fff; font-size: 14px; flex: 0 0 auto;
+    }
+
+    .nav { padding: 4px 10px; display: flex; flex-direction: column; gap: 2px; }
+
+    .nav button {
+      display: flex; align-items: center; gap: 9px;
+      width: 100%;
+      border: 0; background: transparent;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font: inherit; color: var(--text);
+      text-align: left; cursor: pointer;
+    }
+
+    .nav button:hover { background: #f0f1f5; }
+
+    .nav button.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .nav .ico { width: 16px; text-align: center; flex: 0 0 auto; opacity: .9; }
+
+    .nav .badge {
+      margin-left: auto;
+      background: var(--accent); color: #fff;
+      font-size: 11px; line-height: 1;
+      padding: 3px 6px; border-radius: 99px;
+      font-weight: 600;
+    }
+
+    .nav .badge:empty { display: none; }
+
+    .side-foot {
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 9px;
+    }
+
+    .conn {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12.5px; color: var(--muted);
+    }
+
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #c4c8ce; flex: 0 0 auto;
+      transition: background .2s;
+    }
+
+    .dot.on { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, .16); }
+    .dot.off { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, .14); }
+
+    .port-row { display: flex; align-items: center; gap: 6px; }
+    .port-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .port-row input { width: 66px; }
+
+    /* ── 控件 ── */
+    input, select, textarea, button {
+      font: inherit;
+      color: var(--text);
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      background: var(--panel);
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      padding: 6px 9px;
+      font-size: 13px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    textarea { resize: vertical; line-height: 1.55; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      background: var(--panel);
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      padding: 6px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .12s, border-color .12s, color .12s;
+    }
+
+    .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: #fcfcff; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn.primary {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+
+    .btn.primary:hover:not(:disabled) { background: #4338ca; color: #fff; }
+
+    .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+    .btn.ghost:hover:not(:disabled) { background: #f0f1f5; color: var(--text); }
+
+    .btn.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad); }
+
+    .btn.sm { padding: 3px 8px; font-size: 12px; border-radius: 6px; }
+
+    label.chk {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--text); cursor: pointer; user-select: none;
+    }
+
+    label.chk input { width: auto; }
+
+    /* ── 主区 ── */
+    .content { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 20px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+
+    .topbar h1 { margin: 0; font-size: 15.5px; font-weight: 650; }
+
+    .topbar .sub { color: var(--faint); font-size: 12.5px; }
+
+    .topbar .spacer { flex: 1; }
+
+    .view { display: none; padding: 18px 20px 40px; overflow: auto; flex: 1; min-height: 0; }
+    .view.active { display: block; }
+
+    /* ── 卡片 ── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .card + .card { margin-top: 16px; }
+
+    .card-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-head h2 { margin: 0; font-size: 13.5px; font-weight: 650; }
+    .card-head .hint { font-size: 12px; color: var(--faint); margin-left: auto; }
+    .card-body { padding: 15px; }
+
+    /* ── 桌宠 hero ── */
+    .hero {
+      display: flex; gap: 18px; align-items: flex-start;
+      padding: 18px;
+    }
+
+    .avatar {
+      width: 92px; height: 92px; flex: 0 0 auto;
+      border-radius: 16px;
+      background: linear-gradient(150deg, #eef0ff, #f7f8ff);
+      border: 1px solid var(--border);
+      display: grid; place-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .avatar .fallback { font-size: 34px; font-weight: 700; color: var(--accent); }
+
+    .pet-meta { min-width: 0; flex: 1; }
+
+    .pet-name {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 17px; font-weight: 650; margin-bottom: 2px;
+    }
+
+    .pet-id { font-size: 12px; color: var(--faint); font-family: ui-monospace, Consolas, monospace; }
+
+    .bubble-wrap { margin-top: 12px; }
+
+    .bubble {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+      background: var(--accent-soft);
+      border: 1px solid #dfe2ff;
+      color: #232a5c;
+      border-radius: 12px 12px 12px 4px;
+      padding: 10px 13px;
+      font-size: 14px;
+      line-height: 1.55;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .bubble.empty {
+      background: #f7f8fa; border-color: var(--border);
+      color: var(--faint); font-style: italic;
+    }
+
+    .bubble .meme {
+      display: block; margin-top: 9px;
+      max-width: 148px; max-height: 148px;
+      width: auto; height: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, .06);
+    }
+
+    .bubble-time { font-size: 11.5px; color: var(--faint); margin-top: 5px; }
+
+    .hero-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+    /* ── 状态网格 ── */
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .grid3 .card { margin-top: 0; }
+
+    .stat-big { font-size: 21px; font-weight: 650; letter-spacing: -.2px; }
+    .stat-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+    .status-line { display: flex; align-items: center; gap: 9px; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 600;
+      padding: 3px 9px; border-radius: 99px;
+      border: 1px solid transparent;
+    }
+
+    .pill.gray { background: #f2f3f5; color: var(--muted); border-color: var(--border); }
+    .pill.indigo { background: var(--accent-soft); color: var(--accent); border-color: #dfe2ff; }
+    .pill.blue { background: #eaf2fe; color: #1d4ed8; border-color: #d6e4fd; }
+    .pill.cyan { background: #e8f7f8; color: #0e7490; border-color: #cfedf0; }
+    .pill.amber { background: var(--warn-soft); color: var(--warn); border-color: #f6e3c0; }
+    .pill.green { background: var(--ok-soft); color: var(--ok); border-color: #cfe9d8; }
+    .pill.red { background: var(--bad-soft); color: var(--bad); border-color: #f3d2d2; }
+
+    .task-text {
+      font-size: 12.5px; color: var(--muted);
+      margin-top: 8px; word-break: break-word;
+      max-height: 54px; overflow: auto;
+    }
+
+    /* ── 余额 ── */
+    .bal-amount { font-size: 23px; font-weight: 650; letter-spacing: -.3px; }
+    .bal-cur { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 3px; }
+
+    .meter { margin-top: 11px; }
+    .meter-top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 4px; }
+    .meter-top .k { color: var(--muted); }
+    .meter-top .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+    .bar { height: 7px; border-radius: 99px; background: #eef0f3; overflow: hidden; }
+    .bar > i { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .35s; }
+    .bar > i.warn { background: #f59e0b; }
+    .bar > i.bad { background: #ef4444; }
+
+    .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 4px 0; }
+    .kv .k { color: var(--muted); }
+    .kv .v { font-variant-numeric: tabular-nums; }
+
+    .divider { height: 1px; background: var(--border); margin: 10px 0; }
+
+    /* ── 通知流 ── */
+    .feed { display: flex; flex-direction: column; gap: 8px; max-height: 230px; overflow: auto; }
+
+    .feed-item {
+      display: flex; gap: 9px; align-items: flex-start;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fcfcfd;
+    }
+
+    .feed-item .fi-ico { flex: 0 0 auto; line-height: 1.4; }
+    .feed-item .fi-body { min-width: 0; flex: 1; }
+    .feed-item .fi-title { font-size: 13px; font-weight: 600; }
+    .feed-item .fi-text { font-size: 12.5px; color: var(--muted); word-break: break-word; }
+    .feed-item .fi-time { font-size: 11px; color: var(--faint); white-space: nowrap; }
+
+    /* ── 叶子/原始状态 ── */
+    .leaf-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .leaf {
+      display: grid;
+      grid-template-columns: minmax(140px, 190px) minmax(0, 1fr) auto;
+      gap: 10px; align-items: baseline;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: #fcfcfd;
+      font-size: 12.5px;
+    }
+
+    .leaf .p { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+    .leaf .d { font-family: ui-monospace, Consolas, monospace; color: var(--muted); word-break: break-all; font-size: 11.5px; }
+    .leaf .c { font-variant-numeric: tabular-nums; color: var(--faint); font-size: 11.5px; white-space: nowrap; }
+
+    .leaf.changed { border-color: var(--accent); background: #fafaff; }
+    .leaf.changed .d { color: var(--accent); }
+    .leaf.changed .c { color: var(--accent); font-weight: 600; }
+
+    .leaf .flash {
+      display: inline-block;
+      font-size: 10.5px; font-weight: 700;
+      color: var(--accent); margin-left: 6px;
+    }
+
+    /* ── 对话 ── */
+    .chat-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+    .chat-head {
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 12px; flex: 0 0 auto;
+    }
+
+    .chat-head select { width: auto; min-width: 150px; }
+    .chat-head input[type="number"] { width: 150px; }
+
+    .messages {
+      flex: 1; min-height: 260px; overflow: auto;
+      display: flex; flex-direction: column; gap: 12px;
+      padding: 4px 2px 8px;
+    }
+
+    .msg { display: flex; gap: 9px; max-width: 78%; }
+    .msg.me { align-self: flex-end; flex-direction: row-reverse; }
+
+    .msg .who {
+      width: 28px; height: 28px; border-radius: 8px; flex: 0 0 auto;
+      display: grid; place-items: center;
+      font-size: 11.5px; font-weight: 700;
+      background: #f0f1f5; color: var(--muted);
+    }
+
+    .msg.pet .who { background: var(--accent-soft); color: var(--accent); }
+
+    .msg .bubble2 {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13.5px;
+      line-height: 1.6;
+      word-break: break-word;
+      white-space: pre-wrap;
+      box-shadow: var(--shadow);
+    }
+
+    .msg.me .bubble2 {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .msg .ts { font-size: 11px; color: var(--faint); margin-top: 4px; }
+
+    .composer { flex: 0 0 auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .composer-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
+    .composer textarea { min-height: 44px; max-height: 140px; }
+
+    .typing { display: inline-flex; gap: 4px; align-items: center; color: var(--faint); font-size: 12.5px; }
+    .typing i {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--faint);
+      animation: bounce 1.1s infinite;
+    }
+    .typing i:nth-child(2) { animation-delay: .15s; }
+    .typing i:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+    /* ── 设置 ── */
+    .pet-rows { display: flex; flex-direction: column; gap: 12px; }
+
+    .pet-row {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 12px;
+      background: #fcfcfd;
+    }
+
+    .pet-row-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .pet-row-top .idx {
+      width: 22px; height: 22px; border-radius: 6px; flex: 0 0 auto;
+      background: var(--accent-soft); color: var(--accent);
+      display: grid; place-items: center; font-size: 11.5px; font-weight: 700;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+      gap: 10px;
+    }
+
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+
+    /* ── 动作页的紧凑组件 ──────────────────────────────────────────────
+       全部 scope 在 .view-action 下：**不动全局 .field**（设置页 / 总览 / 对话还在用它）。
+       起因：.field label{display:block} 会让每个字段独占一行标签，卡片被拉得很长。 */
+
+    /* 字段：标签在左、控件在右（一个字段一行） */
+    .view-action .row {
+      display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; align-items: center;
+    }
+    .view-action .row + .row { margin-top: 7px; }
+    .view-action .row > label {
+      font-size: 12px; color: var(--muted); text-align: right; line-height: 1.35;
+    }
+    .view-action .row > .ctl {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0;
+    }
+    .view-action .row > .ctl > .grow { flex: 1 1 220px; min-width: 0; }
+    /* 全局 select 是 100% 宽：在 .ctl 里会把同一行的第二个控件挤到下一行（标签于是被垂直居中到两行之间）。
+       这里让它按内容宽排，要撑满的用 .grow 显式声明。 */
+    .view-action .row > .ctl > select { flex: 0 1 auto; width: auto; min-width: 132px; }
+    /* 挂在 .row 外面的次级提示：缩进到与控件列对齐 */
+    .view-action .hint-indent { margin: 5px 0 0 86px; font-size: 12px; color: var(--faint); }
+
+    /* 卡片内的分节标题（位置 / 抛掷 这类） */
+    .view-action .sub {
+      margin: 15px 0 9px; padding-top: 12px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650;
+    }
+    .view-action .sub .hint { font-weight: 400; margin-left: auto; }
+
+    /* 说明：**一行摘要 + 点开看**。原来卡片顶部是 4~5 行常驻灰字。 */
+    .view-action details.desc { margin: 0 0 11px; }
+    .view-action details.desc > summary {
+      cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+      font-size: 12.5px; color: var(--muted);
+    }
+    .view-action details.desc > summary::-webkit-details-marker { display: none; }
+    .view-action details.desc > summary::before { content: 'ⓘ'; color: var(--faint); flex: 0 0 auto; }
+    .view-action details.desc > summary::after {
+      content: '展开'; flex: 0 0 auto; margin-left: auto; padding: 0 6px;
+      font-size: 11px; color: var(--faint); border: 1px solid var(--border); border-radius: 99px;
+    }
+    .view-action details.desc[open] > summary::after { content: '收起'; }
+    .view-action details.desc > .desc-body {
+      margin-top: 8px; padding: 9px 11px; font-size: 12.5px; line-height: 1.7; color: var(--muted);
+      background: rgba(128, 128, 128, 0.06);
+      border-left: 2px solid var(--border-strong); border-radius: 0 6px 6px 0;
+    }
+
+    /* 可勾选的胶囊（「等待状态」那一排，替掉原来竖排的 5 行复选框） */
+    .view-action .chip-check {
+      display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
+      font-size: 12px; padding: 3px 9px; border-radius: 99px;
+      border: 1px solid var(--border); background: #f7f8fa; color: var(--muted);
+    }
+    .view-action .chip-check input { margin: 0; }
+    .view-action .chip-check:has(input:checked) {
+      background: var(--accent-soft); border-color: #c7cbfa; color: var(--accent); font-weight: 600;
+    }
+
+    .toggles { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 11px; }
+
+    .switches {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 11px;
+    }
+
+    .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .chip {
+      font-size: 12px; padding: 3px 9px; border-radius: 99px;
+      background: #f2f3f5; border: 1px solid var(--border); color: var(--muted);
+    }
+
+    .provider-block + .provider-block { margin-top: 12px; }
+    .provider-name { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+
+    .path-row {
+      display: grid; grid-template-columns: 104px minmax(0, 1fr);
+      gap: 10px; align-items: baseline;
+      padding: 6px 0; border-bottom: 1px dashed var(--border);
+      font-size: 12.5px;
+    }
+
+    .path-row:last-child { border-bottom: 0; }
+    .path-row .k { color: var(--muted); }
+    .path-row .v { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
+
+    /* ── 位置预览框 / 抛掷拨盘 ── */
+    .stage {
+      position: relative;
+      margin-top: 8px;
+      aspect-ratio: 16 / 9;
+      max-height: 250px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      /* 四分格背景：给"屏幕比例"一个视觉参照，便于估摸归一化坐标 */
+      background:
+        linear-gradient(rgba(128, 128, 128, .07) 1px, transparent 1px) 0 0 / 100% 25%,
+        linear-gradient(90deg, rgba(128, 128, 128, .07) 1px, transparent 1px) 0 0 / 25% 100%,
+        #fcfcfd;
+      cursor: crosshair;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .stage-dot {
+      position: absolute;
+      width: 14px; height: 14px;
+      margin: -7px 0 0 -7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, .18);
+      pointer-events: none;
+      transition: left .08s linear, top .08s linear;
+    }
+
+    /* 实况标记：绿色圆环 + 箭头方向 = 朝向（宠物**实际**在哪，不是目标）。
+       填充刻意半透明、直径比目标点大一圈——两者重合时蓝点仍能透出来。 */
+    .stage-actual {
+      position: absolute;
+      width: 26px; height: 26px;
+      margin: -13px 0 0 -13px;
+      box-sizing: border-box;
+      line-height: 22px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--ok);
+      background: rgba(21, 128, 61, .14);
+      border: 2px solid var(--ok);
+      border-radius: 50%;
+      pointer-events: none;
+      display: none;
+      transition: left .12s linear, top .12s linear;
+    }
+
+    .stage-tip {
+      position: absolute; left: 9px; bottom: 6px;
+      font-size: 11.5px; color: var(--faint);
+      pointer-events: none;
+    }
+
+    .throw-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; margin-top: 10px; }
+
+    .dial {
+      position: relative;
+      width: 132px; height: 132px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      border: 1px solid var(--border-strong);
+      background: #fcfcfd;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .dial-ring {
+      position: absolute; inset: 15px;
+      border-radius: 50%;
+      border: 1px dashed var(--border-strong);
+      pointer-events: none;
+    }
+
+    .dial-hub {
+      position: absolute; left: 50%; top: 50%;
+      width: 8px; height: 8px; margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      background: var(--faint);
+      pointer-events: none;
+    }
+
+    .dial-arrow {
+      position: absolute; left: 50%; top: 50%;
+      width: 52px; height: 2px;
+      margin-top: -1px;
+      border-radius: 2px;
+      background: var(--accent);
+      transform-origin: 0 50%;
+      pointer-events: none;
+    }
+
+    .throw-side { flex: 1; min-width: 236px; display: flex; flex-direction: column; gap: 10px; }
+
+    .throw-readout {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.7;
+    }
+
+    /* ── 活动日志 ── */
+    .logpanel {
+      background: var(--side);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+    }
+
+    .app.no-log .logpanel { display: none; }
+
+    .log-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 13px 14px 11px;
+      font-size: 13px; font-weight: 650;
+      border-bottom: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+
+    .log-head .count { font-size: 11.5px; color: var(--faint); font-weight: 500; margin-left: auto; }
+
+    .log-body { overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+
+    .log-item {
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--panel);
+      padding: 6px 8px;
+      font-size: 11.5px;
+    }
+
+    .log-item .l1 { display: flex; align-items: center; gap: 6px; }
+
+    .log-item .m {
+      font-weight: 700; font-size: 10px; letter-spacing: .4px;
+      padding: 1px 5px; border-radius: 4px;
+      background: #eef0f3; color: var(--muted);
+    }
+
+    .log-item .m.POST { background: var(--ok-soft); color: var(--ok); }
+    .log-item .m.PUT { background: var(--warn-soft); color: var(--warn); }
+
+    .log-item .u { font-family: ui-monospace, Consolas, monospace; word-break: break-all; flex: 1; }
+    .log-item .s { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+    .log-item .s.ok { color: var(--ok); font-weight: 600; }
+    .log-item .s.bad { color: var(--bad); font-weight: 600; }
+    .log-item .err { color: var(--bad); margin-top: 3px; word-break: break-word; }
+
+    /* ── 杂项 ── */
+    .empty-note { color: var(--faint); font-size: 13px; font-style: italic; }
+
+    .toast-wrap {
+      position: fixed; right: 18px; bottom: 18px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 50; pointer-events: none;
+    }
+
+    .toast {
+      background: #1f2530; color: #fff;
+      border-radius: 8px; padding: 9px 13px;
+      font-size: 13px; max-width: 340px;
+      box-shadow: 0 8px 24px rgba(16, 24, 40, .18);
+      animation: slidein .18s ease-out;
+      word-break: break-word;
+    }
+
+    .toast.bad { background: #7f1d1d; }
+    .toast.ok { background: #14532d; }
+
+    @keyframes slidein { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    pre.code {
+      margin: 0; background: var(--code);
+      border: 1px solid var(--border); border-radius: 7px;
+      padding: 10px; font-size: 12px; line-height: 1.5;
+      font-family: ui-monospace, Consolas, monospace;
+      overflow: auto; max-height: 320px;
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    details.raw > summary {
+      cursor: pointer; font-size: 13px; color: var(--muted);
+      padding: 4px 0; user-select: none;
+    }
+
+    details.raw[open] > summary { margin-bottom: 8px; }
+
+    /* 窄屏：日志面板收起，侧栏变窄 */
+    @media (max-width: 1180px) {
+      .app { grid-template-columns: 190px minmax(0, 1fr); }
+      .logpanel { display: none; }
+      .app.show-log { grid-template-columns: 190px minmax(0, 1fr); }
+      .app.show-log .logpanel {
+        display: flex; position: fixed; right: 0; top: 0; bottom: 0;
+        width: 296px; z-index: 40; box-shadow: -8px 0 24px rgba(16,24,40,.10);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app" id="app">
+    <!-- ══ 侧栏 ══ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo">🐟</span>
+        <span>桌宠控制台</span>
+      </div>
+
+      <nav class="nav">
+        <button type="button" data-view="overview" class="active">
+          <span class="ico">🏠</span><span>桌宠总览</span>
+        </button>
+        <button type="button" data-view="action">
+          <span class="ico">🎛️</span><span>动作</span>
+        </button>
+        <button type="button" data-view="menu">
+          <span class="ico">🧪</span><span>其他</span>
+        </button>
+        <button type="button" data-view="state">
+          <span class="ico">📋</span><span>实时状态</span>
+        </button>
+        <button type="button" data-view="chat">
+          <span class="ico">💬</span><span>对话</span>
+          <span class="badge" id="nav-chat-badge"></span>
+        </button>
+        <button type="button" data-view="settings">
+          <span class="ico">⚙️</span><span>设置</span>
+        </button>
+      </nav>
+
+      <div class="side-foot">
+        <div class="conn">
+          <span class="dot" id="conn-dot"></span>
+          <span id="conn-label">连接中…</span>
+        </div>
+        <div class="port-row">
+          <label for="port">宿主端口</label>
+          <input id="port" type="number" min="1" max="65535" value="3080">
+          <button type="button" class="btn sm" id="apply-port">应用</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══ 主区 ══ -->
+    <div class="content">
+      <header class="topbar">
+        <h1 id="view-title">桌宠总览</h1>
+        <span class="sub" id="view-sub"></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn sm" id="toggle-log">活动日志</button>
+        <button type="button" class="btn sm" id="refresh-all">刷新</button>
+      </header>
+
+      <!-- ── 总览 ── -->
+      <section class="view active" id="view-overview">
+        <div class="card">
+          <div class="hero">
+            <div class="avatar" id="pet-avatar">
+              <span class="fallback" id="avatar-fallback">?</span>
+            </div>
+            <div class="pet-meta">
+              <div class="pet-name">
+                <span id="pet-name">桌宠</span>
+                <select id="pet-select" style="width:auto"></select>
+              </div>
+              <div class="pet-id" id="pet-id"></div>
+
+              <div class="pet-id">
+                <label for="surface-select">显示端</label>
+                <select id="surface-select" style="width:auto">
+                  <option value="any">any（哪端都行）</option>
+                  <option value="web">web（仅网页）</option>
+                  <option value="desktop">desktop（仅桌面）</option>
+                  <option value="both">both（两端都要）</option>
+                </select>
+                <span class="hint">
+                  动作接口的 <span class="mono">?surface=</span>（必填）：宿主拿它跟宠物的
+                  <span class="mono">display</span> 对一下，对不上就回
+                  <span class="mono">pet-not-displayed</span> + 该宠物<b>实际</b>的 display
+                </span>
+              </div>
+
+              <div class="bubble-wrap">
+                <div class="bubble empty" id="say-bubble">还没有说过话</div>
+                <div class="bubble-time" id="say-time"></div>
+              </div>
+
+              <div class="hero-actions">
+                <button type="button" class="btn primary" id="btn-whisper">让它说句话</button>
+                <button type="button" class="btn" id="btn-balance">刷新余额</button>
+                <button type="button" class="btn" id="btn-chat-jump">去对话</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <!-- 工作状态 -->
+          <div class="card">
+            <div class="card-head">
+              <h2>工作状态</h2>
+              <span class="hint">随 DSH 会话变化</span>
+            </div>
+            <div class="card-body">
+              <div class="status-line">
+                <span class="pill gray" id="work-pill">空闲</span>
+              </div>
+              <div class="task-text" id="work-task">—</div>
+            </div>
+          </div>
+
+          <!-- 余额 -->
+          <div class="card">
+            <div class="card-head">
+              <h2>余额钱包</h2>
+              <span class="hint" id="bal-age"></span>
+            </div>
+            <div class="card-body" id="bal-body">
+              <div class="empty-note">还没有数据</div>
+            </div>
+          </div>
+
+          <!-- 通知 -->
+          <div class="card">
+            <div class="card-head">
+              <h2>系统通知</h2>
+              <span class="hint">回合结束 / 权限 / 提问</span>
+            </div>
+            <div class="card-body">
+              <div class="feed" id="notify-feed">
+                <div class="empty-note">还没有通知</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ── 动作：以"外部插件"身份让桌宠做事 ── -->
+      <section class="view view-action" id="view-action">
+        <!-- 占用锁：issue #122 第 4 项——联动演出期间独占这只宠物，除持锁者外全静音 -->
+        <div class="card">
+          <div class="card-head">
+            <h2>占用锁</h2>
+            <span class="hint">POST /lock · /lock/release</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>占用期间这只宠物完全静止，动作接口只有持锁者能调</summary>
+              <div class="desc-body">
+                模拟联动演出的第一步（issue #122 第 4 项）：<span class="mono">POST /lock</span> 拿一个
+                <span class="mono">lockId</span>，这段时间<b>这只宠物归你独占</b>——它自己不动、也不弹气泡
+                （随机动画、自主走位、碎碎念、余额、工作状态一概让路）。
+                <br>
+                占用期间，本页其他卡片里的接口（投喂、点播动画、位置、抛掷、清空气泡）
+                <b>必须带上这个编号</b>，否则回 <span class="mono">lock-required</span>；带错编号回
+                <span class="mono">lock-lost</span>（附 <span class="mono">cause</span>：过期 / 已释放 /
+                被用户抢走）。<b>本页会自动带上</b>，不用手填。
+                <br>
+                取锁和续期是<b>同一个接口</b>：给 <span class="mono">lockId</span> 就是续期。续期是持锁者
+                每隔几秒要做一次的心跳——不续期的话，到点锁自己就没了。
+                <br>
+                <b>用户优先</b>：用户拖一下宠物、或把它隐藏/关闭，锁会立刻被撤掉，所以别把它当成能长期占着的东西。
+                没锁的时候那些接口连 <span class="mono">lock</span> 参数都不看，行为跟以前一模一样。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="lk-pet">目标宠物</label>
+              <div class="ctl">
+                <select id="lk-pet"></select>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="lk-ttl">占用时长</label>
+              <div class="ctl">
+                <input id="lk-ttl" type="number" min="1000" max="1800000" step="5000" value="120000" style="width:110px">
+                <span class="hint">ms · 1000–1800000（1 秒–30 分钟）· 缺省 120000（2 分钟）· 续期时沿用上次</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label>当前占用</label>
+              <div class="ctl">
+                <span class="mono" id="lk-id">（没有）</span>
+                <span class="hint" id="lk-remain"></span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="lk-acquire">取锁</button>
+                <button type="button" class="btn" id="lk-renew">续期</button>
+                <button type="button" class="btn" id="lk-release">释放</button>
+                <button type="button" class="btn" id="lk-force">模拟用户接管</button>
+                <span class="hint" id="lk-result"></span>
+              </div>
+            </div>
+            <div class="hint-indent" id="lk-hint"></div>
+          </div>
+        </div>
+
+        <!-- 第三方投喂：这就是 issue #76 的场景——控制台扮演"别的插件"，把外部文本送进气泡 -->
+        <div class="card">
+          <div class="card-head">
+            <h2>第三方投喂</h2>
+            <span class="hint">POST /broadcast</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>不生成内容，只把给定文本搬进气泡；配图给池内名或自带地址</summary>
+              <div class="desc-body">
+                模拟宿主侧其他插件（如巡检类插件）调用 <span class="mono">POST /broadcast</span>：
+                <b>不生成内容</b>，只搬运。
+                配图<b>两种形态二选一</b>（issue #122 第 1 条）：给<b>名称</b>时只接受该桌宠条目表情包池内的名字
+                （<span class="mono">pet/&lt;素材根&gt;-memes/</span> 独占 → 用户
+                <span class="mono">memes/</span> → 包内 <span class="mono">assets/memes/</span>），
+                下拉框只列<b>磁盘上真实存在</b>的图；给<b>地址</b>时是完整 URL、<b>不查池</b>。
+                两个都给会被判 <span class="mono">bad-request</span>。
+                <br>
+                时长可调、可关掉动画联动、可提前撤回——这三件事是 issue #122 第 5 条要的。
+                内容与频率由调用方自己负责：<b>不设长度限制，也不限频</b>；「清空气泡」只收起说话气泡，
+                正在播的动画、余额气泡、工作状态气泡都不动，没有气泡时也回 <span class="mono">ok</span>。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="bc-text">要说的话</label>
+              <div class="ctl">
+                <input id="bc-text" class="grow" type="text" value="巡检完毕，一切正常">
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="bc-pet">目标宠物</label>
+              <div class="ctl">
+                <select id="bc-pet"></select>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="bc-pic-mode">配图来源</label>
+              <div class="ctl">
+                <select id="bc-pic-mode">
+                  <option value="image">表情包池内名称</option>
+                  <option value="url">自己托管的地址</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" id="bc-image-row">
+              <label for="bc-image">配图名称</label>
+              <div class="ctl">
+                <select id="bc-image" class="grow">
+                  <option value="">（加载中…）</option>
+                </select>
+                <button type="button" class="btn sm" id="bc-image-reload">刷新清单</button>
+              </div>
+            </div>
+            <div class="hint-indent" id="bc-image-hint"></div>
+
+            <div class="row" id="bc-url-row" style="display:none">
+              <label for="bc-url">配图地址</label>
+              <div class="ctl">
+                <input id="bc-url" class="grow" type="text" placeholder="https://…/拒绝换壁纸.png（或点下面的「选择图片」）">
+              </div>
+            </div>
+
+            <div class="row" id="bc-upload-row" style="display:none">
+              <label>上传图片</label>
+              <div class="ctl">
+                <button type="button" class="btn" id="bc-file-btn">选择图片</button>
+                <input id="bc-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" style="display:none">
+                <button type="button" class="btn primary" id="bc-upload">上传并填入地址</button>
+                <span class="hint" id="bc-upload-result"></span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="bc-duration">气泡时长</label>
+              <div class="ctl">
+                <input id="bc-duration" type="number" min="0" step="500" value="10000" style="width:110px">
+                <span class="hint">ms · 缺省 10000 · <b>0 = 不显示</b></span>
+                <label class="chk"><input type="checkbox" id="bc-anim" checked> 联动说话动画</label>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="bc-send">投喂</button>
+                <button type="button" class="btn" id="bc-clear">清空气泡</button>
+                <span class="hint" id="bc-result"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 点播动画：其他插件让桌宠播一段动画（效果与右键「动作」菜单一致） -->
+        <div class="card">
+          <div class="card-head">
+            <h2>点播动画</h2>
+            <span class="hint">POST /anim</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>播池内名字（同右键「动作」菜单）或第三方自带的地址</summary>
+              <div class="desc-body">
+                两种形态<b>二选一</b>（issue #122 第 1 条）：给<b>名字</b>时必须是该宠物动画池里真实存在的
+                （下拉框列的就是池子），效果与右键菜单点「动作」完全一致——文字类先强制朝左的镜像修正、
+                移动类走真实位移；给<b>地址</b>时是第三方自带的素材，完整 URL、<b>不查池</b>，
+                消费端直接换源播一次、<b>不走菜单语义</b>（裸地址没有"是不是文字类 / 是不是移动类"这些属性）。
+                两个都给或都不给都会被判 <span class="mono">bad-request</span>。
+                <br>
+                点播是"插播一段"：播完回到正常动画链；<span class="mono">display: both</span> 时两端都会播。
+                要看回执请用下面那张「播放回执」卡片。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="anim-mode">来源</label>
+              <div class="ctl">
+                <select id="anim-mode">
+                  <option value="name">动画池内名字</option>
+                  <option value="url">自己托管的地址</option>
+                </select>
+                <select id="anim-pet"></select>
+              </div>
+            </div>
+
+            <div class="row" id="anim-name-row">
+              <label for="anim-name">动画</label>
+              <div class="ctl">
+                <select id="anim-name" class="grow"></select>
+              </div>
+            </div>
+
+            <div class="row" id="anim-url-row" style="display:none">
+              <label for="anim-url">动画地址</label>
+              <div class="ctl">
+                <input id="anim-url" class="grow" type="text" placeholder="https://…/拉侧栏.webm（或点下面的「选择视频」）">
+              </div>
+            </div>
+
+            <div class="row" id="anim-upload-row" style="display:none">
+              <label>上传视频</label>
+              <div class="ctl">
+                <button type="button" class="btn" id="anim-file-btn">选择视频</button>
+                <input id="anim-file" type="file" accept="video/webm,video/mp4,.webm,.mp4" style="display:none">
+                <button type="button" class="btn primary" id="anim-upload">上传并填入地址</button>
+                <span class="hint" id="anim-upload-result"></span>
+              </div>
+            </div>
+
+            <div class="row" id="anim-upload-preview-row" style="display:none">
+              <label>回读</label>
+              <div class="ctl">
+                <video id="anim-preview" muted loop playsinline style="max-width:220px;border-radius:8px;background:#000"></video>
+                <span class="hint">
+                  画面是浏览器<b>从上传后的那个地址</b>取回来的——能出画就说明服务真能访问它。
+                  地址跨源（测试代理 8741 vs DSH 页面），代理给 <span class="mono">/__uploads</span> 补了
+                  <span class="mono">Access-Control-Allow-Origin</span> 才能过。
+                </span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="anim-facing">朝向</label>
+              <div class="ctl">
+                <select id="anim-facing">
+                  <option value="">不指定（不动朝向）</option>
+                  <option value="left">left（素材原样）</option>
+                  <option value="right">right（镜像）</option>
+                </select>
+                <span class="hint">
+                  可选。不指定就<b>不动朝向</b>（保持宠物当前朝向，不是回落 left）；
+                  指定了就设成它，并优先于"文字类动画点播前强制朝左"那条镜像修正。
+                </span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="anim-play">播放</button>
+                <span class="hint" id="anim-result"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 播放回执（issue #122 第 3 项）：POST /anim 会带回 playbackId，
+             拿它轮询 GET /playback/<id> 才能知道这一段**到底**播完了没有 -->
+        <div class="card">
+          <div class="card-head">
+            <h2>播放回执</h2>
+            <span class="hint">GET /playback/&lt;id&gt;</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>受理 ≠ 播完：勾选要等的状态，命中即停，没命中就继续挂起</summary>
+              <div class="desc-body">
+                <span class="mono">POST /anim</span> 只代表"受理了"，<span class="mono">accepted</span> ≠ 播完。
+                响应里的 <span class="mono">playbackId</span> 可以查
+                <span class="mono">GET /playback/&lt;id&gt;</span>：勾选要等的状态，命中即停；
+                没命中就按「轮询时间」反复挂起等待（长轮询）。
+              </div>
+            </details>
+
+            <div class="row">
+              <label>等待状态</label>
+              <div class="ctl">
+                <label class="chip-check"><input type="checkbox" class="pb-wait" value="accepted"><span>accepted</span></label>
+                <label class="chip-check"><input type="checkbox" class="pb-wait" value="playing"><span>playing</span></label>
+                <label class="chip-check"><input type="checkbox" class="pb-wait" value="ended" checked><span>ended</span></label>
+                <label class="chip-check"><input type="checkbox" class="pb-wait" value="failed" checked><span>failed</span></label>
+                <label class="chip-check"><input type="checkbox" class="pb-wait" value="cancelled" checked><span>cancelled</span></label>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="pb-timeout">轮询时间</label>
+              <div class="ctl">
+                <input type="number" id="pb-timeout" value="10000" min="100" max="10000" step="500" style="width:110px">
+                <span class="hint">ms · 每次最多挂这么久，回来立刻再发一次（限 100–10000）</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn" id="pb-start" disabled>开始轮询</button>
+                <button type="button" class="btn" id="pb-stop" disabled>停止</button>
+                <span class="hint" id="pb-state">先在上面「点播动画」里点一次「播放」拿到 playbackId</span>
+              </div>
+            </div>
+
+            <!-- 直观显示：当前状态高亮成阶梯 + 每轮一行表格（原始 JSON 收在下面的折叠里） -->
+            <div id="pb-stages" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+            <div style="margin-top:8px;overflow:auto;max-height:200px">
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead>
+                  <tr style="text-align:left;opacity:.6">
+                    <th style="padding:4px 6px;font-weight:600">轮次</th>
+                    <th style="padding:4px 6px;font-weight:600">等了</th>
+                    <th style="padding:4px 6px;font-weight:600">状态</th>
+                    <th style="padding:4px 6px;font-weight:600">命中</th>
+                    <th style="padding:4px 6px;font-weight:600">reason</th>
+                  </tr>
+                </thead>
+                <tbody id="pb-rows"></tbody>
+              </table>
+            </div>
+            <details style="margin-top:8px">
+              <summary class="hint" style="cursor:pointer">原始响应文本（逐轮，要查再展开）</summary>
+              <div id="pb-log" class="mono" style="margin-top:6px;max-height:240px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;background:rgba(128,128,128,.08);border:1px solid rgba(128,128,128,.2);border-radius:6px;padding:8px"></div>
+            </details>
+          </div>
+        </div>
+
+        <!-- 位置与抛掷：第三方让宠物挪位 / 飞出去（issue #122 第 6 项） -->
+        <div class="card">
+          <div class="card-head">
+            <h2>位置与抛掷</h2>
+            <span class="hint">POST /position · POST /throw · GET /pose</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>两条运动指令：位置走三条既有路径，抛掷复用已有物理</summary>
+              <div class="desc-body">
+                模拟第三方调用 <span class="mono">POST /position</span> 与 <span class="mono">POST /throw</span>。
+                两条都是<b>运动指令</b>：写进状态后由渲染端执行，<b>不引入任何新物理</b>——位置按
+                <span class="mono">mode</span> 走三条既有路径（直接 / 弹簧 / 直线），抛掷复用已有的
+                重力 / 反弹 / 地面摩擦 / 落地 Q 弹。
+                <br>
+                <b>手指正按在宠物身上时会被静默丢弃</b>：接口仍回 <span class="mono">ok</span>，
+                但宠物不动，而且轮询也看不出来（这是设计上的已知缺口）。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="mv-pet">目标宠物</label>
+              <div class="ctl">
+                <select id="mv-pet"></select>
+                <span class="hint" id="mv-hint"></span>
+              </div>
+            </div>
+
+            <!-- ── 位置 ── -->
+            <div class="sub">
+              位置
+              <span class="hint">
+                x / y = 宠物中心的归一化坐标（0~1，越界会被夹取）；<b>蓝点</b> = 你要它去的目标，
+                <b style="color:var(--ok)">绿箭头</b> = 它现在实际在哪、朝哪边（点「读实况」后显示）
+              </span>
+            </div>
+            <div class="stage" id="mv-stage">
+              <div class="stage-dot" id="mv-dot"></div>
+              <div class="stage-actual" id="mv-actual"></div>
+              <div class="stage-tip">点或拖这里设定宠物中心</div>
+              <div class="stage-tip" style="left:auto;right:9px">绿箭头 = 实况</div>
+            </div>
+            <div class="row" style="margin-top:9px">
+              <label>目标位置</label>
+              <div class="ctl">
+                <span class="hint">x</span>
+                <input type="number" id="mv-x" step="0.01" value="0.5" style="width:92px">
+                <span class="hint">y</span>
+                <input type="number" id="mv-y" step="0.01" value="0.5" style="width:92px">
+                <select id="mv-mode">
+                  <option value="spring" selected>弹簧</option>
+                  <option value="line">直线</option>
+                  <option value="instant">直接</option>
+                </select>
+                <span class="hint">ms</span>
+                <input type="number" id="mv-duration" step="100" min="0" value="1200" style="width:92px">
+              </div>
+            </div>
+            <div class="hint-indent" id="mv-note"></div>
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="mv-go">挪过去</button>
+                <button type="button" class="btn" id="mv-snap">立即到位</button>
+                <span class="hint" id="mv-result"></span>
+              </div>
+            </div>
+            <div class="row">
+              <label>实际位置</label>
+              <div class="ctl">
+                <button type="button" class="btn" id="mv-pose">读实况</button>
+                <span class="hint" id="mv-pose-result">
+                  桌面端才有；网页端走页面内 Cordis 服务 <span class="mono">petApi7340</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- ── 抛掷 ── -->
+            <div class="sub">
+              抛掷
+              <span class="hint">angle 单位度（0 = 正右，逆时针为正）· power 是力度倍率</span>
+            </div>
+            <div class="throw-row">
+              <div class="dial" id="th-dial">
+                <div class="dial-ring"></div>
+                <div class="dial-arrow" id="th-arrow"></div>
+                <div class="dial-hub"></div>
+              </div>
+              <div class="throw-side">
+                <div class="row">
+                  <label for="th-angle">角度</label>
+                  <div class="ctl">
+                    <input type="number" id="th-angle" step="1" value="45" style="width:92px">
+                    <span class="hint">0 = 正右，逆时针为正</span>
+                  </div>
+                </div>
+                <div class="row">
+                  <label for="th-power">力度</label>
+                  <div class="ctl">
+                    <input type="range" id="th-power" min="0.1" max="6" step="0.05" value="1" style="flex:1;min-width:150px">
+                    <input type="number" id="th-power-num" min="0.01" step="0.1" value="1" style="width:84px">
+                  </div>
+                </div>
+                <div class="throw-readout" id="th-readout"></div>
+                <div class="row">
+                  <label></label>
+                  <div class="ctl">
+                    <button type="button" class="btn primary" id="th-go">抛出去</button>
+                    <span class="hint" id="th-result"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="hint-indent" style="margin-left:0">
+              抛掷<b>不设死区</b>：力度再小也照抛（死区是拖拽语义，表示"手停住了 = 温柔放下"）。
+              角度是<b>数学惯例</b>而非屏幕惯例，所以"往上抛"写 <span class="mono">90</span> 而不是
+              <span class="mono">270</span>。宠物<b>从当前位置起飞</b>，不需要先被"抓住"。
+            </div>
+          </div>
+        </div>
+
+        <!-- 显示在哪端：第三方改单只宠物的 display（两端右键菜单走的就是这个接口） -->
+        <div class="card">
+          <div class="card-head">
+            <h2>显示在哪端</h2>
+            <span class="hint">POST /pet-display</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>只传宠物 id 与目标 display，层归属由宿主按 id 反查</summary>
+              <div class="desc-body">
+                模拟第三方调用 <span class="mono">POST /pet-display</span>：只传宠物 id 与目标
+                <span class="mono">display</span>，<b>不用回传整段 pets</b>——层归属（写
+                <span class="mono">main-config.jsonc</span> 还是
+                <span class="mono">pet/&lt;前缀&gt;-config.json</span>）由宿主按 id 反查。
+                桌面端与浏览器端的右键菜单「显示位置」走的就是它。
+                <br>
+                <b>这管的是"哪个端"，不是屏幕坐标</b>——屏幕坐标见同页的「位置与抛掷」。
+                这是<b>持久配置写入</b>，不是临时隐藏：选「都不」后这只宠物两端都不可见，
+                恢复入口是设置页的「显示在哪端」下拉框。返回体是改动后的成品聚合，本页据此刷新宠物清单。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="disp-value">显示在哪端</label>
+              <div class="ctl">
+                <select id="disp-value" class="grow">
+                  <option value="web">仅网页</option>
+                  <option value="desktop">仅桌面</option>
+                  <option value="both">两者</option>
+                  <option value="none">都不</option>
+                </select>
+                <select id="disp-pet"></select>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="disp-send">应用</button>
+                <span class="hint" id="disp-result"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ── 任务状态：外部写入 /work-status 的自定义输入与完整任务流；下方保留原第三方菜单演示 ── -->
+      <section class="view view-action" id="view-menu">
+        <div class="card">
+          <div class="card-head">
+            <h2>自定义输入</h2>
+            <span class="hint">POST /work-status</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>以外部程序身份写入一档状态；任务文案可省略或清空</summary>
+              <div class="desc-body">
+                模拟 Codex 之类的外部调用方：<span class="mono">POST /dsh-pet-7340/work-status</span>，
+                body <span class="mono">{ state, task? }</span>。写入后桌宠按现有档位播动画，
+                本卡片同时显示宿主回报与 <span class="mono">/state</span> 里的当前快照。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="ws-state">状态</label>
+              <div class="ctl">
+                <select id="ws-state">
+                  <option value="thinking">thinking · 思考中</option>
+                  <option value="working" selected>working · 工作中</option>
+                  <option value="result">result · 整理中</option>
+                  <option value="waiting">waiting · 等待你</option>
+                  <option value="success">success · 完成</option>
+                  <option value="error">error · 出错</option>
+                </select>
+                <span class="hint">6 档，与动画池索引一致</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="ws-task">任务文案</label>
+              <div class="ctl">
+                <input id="ws-task" class="grow" type="text" maxlength="40" value="正在处理你的请求">
+                <label class="chk"><input type="checkbox" id="ws-task-keep"> 省略 task（保留上一次）</label>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="ws-send">写入</button>
+                <button type="button" class="btn" id="ws-clear">清空（DELETE）</button>
+                <span class="hint" id="ws-result"></span>
+              </div>
+            </div>
+            <div class="hint-indent" id="ws-current">当前快照：—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>完整任务流模拟</h2>
+            <span class="hint">thinking → working → result → success</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>按回合顺序连续写入 4 档，每步间隔可调；可中途停止</summary>
+              <div class="desc-body">
+                模拟一次完整任务：思考 → 工具执行 → 整理结果 → 完成。每一步都走真实的
+                <span class="mono">POST /work-status</span>，可在桌宠上看到动画与气泡依次变化。
+                <span class="mono">success</span> 会保留在状态里（气泡 10 秒后自动收起），
+                需要回空闲时点「清空」。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="ws-flow-gap">每步间隔</label>
+              <div class="ctl">
+                <input id="ws-flow-gap" type="number" min="200" step="100" value="1200" style="width:110px">
+                <span class="hint">ms · 200–5000</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="ws-flow-start">开始模拟</button>
+                <button type="button" class="btn" id="ws-flow-stop">停止</button>
+                <button type="button" class="btn" id="ws-flow-clear">清空</button>
+                <span class="hint" id="ws-flow-status">未开始</span>
+              </div>
+            </div>
+            <pre class="code" id="ws-flow-log" style="margin-top:9px">等待开始…</pre>
+          </div>
+        </div>
+
+        <div class="hint-indent" style="margin:18px 0 8px">以下为原有「第三方菜单」演示，保留未动。</div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>第三方菜单 · 注册菜单项</h2>
+            <span class="hint">POST /menu/item</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>注册后右键桌宠多出「更多」，点一下不会执行任何动作</summary>
+              <div class="desc-body">
+                宿主只记下“这一项被点了、在哪只宠物上”，要做什么由本页取走事件后自己调
+                （见下面的「事件」）。<span class="mono">owner</span> 既是身份也是分组名，
+                同名的项收在同一组。
+              </div>
+            </details>
+
+            <div class="row">
+              <label>owner</label>
+              <div class="ctl">
+                <span class="mono" id="mn-owner">测试</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label>菜单项</label>
+              <div class="ctl"><span class="mono">发射 · 漫游</span></div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="mn-register">注册</button>
+                <button type="button" class="btn" id="mn-clear">清除</button>
+                <span class="hint" id="mn-result"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>第三方菜单 · 事件</h2>
+            <span class="hint">GET /menu/events?owner=测试&amp;wait=10000</span>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <label>状态</label>
+              <div class="ctl"><span class="mono" id="mn-status">未开始</span></div>
+            </div>
+            <div class="row">
+              <label>最近一次</label>
+              <div class="ctl"><span class="mono" id="mn-last">（还没有）</span></div>
+            </div>
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn" id="mn-start">开始轮询</button>
+                <button type="button" class="btn" id="mn-stop">停止</button>
+                <span class="hint">读到即清空</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 实时状态：轮询到的每个状态位（叶子）与原始 JSON ── -->
+      <section class="view" id="view-state">
+        <!-- 原始状态 -->
+        <div class="card">
+          <div class="card-head">
+            <h2>实时状态</h2>
+            <span class="hint" id="leaf-hint">每秒轮询一次，只有内容变了才刷新</span>
+          </div>
+          <div class="card-body">
+            <div class="leaf-list" id="leaf-list">
+              <div class="empty-note">等待第一次轮询…</div>
+            </div>
+            <details class="raw" style="margin-top:12px">
+              <summary>查看原始 JSON</summary>
+              <pre class="code" id="state-json">—</pre>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 对话 ── -->
+      <section class="view" id="view-chat">
+        <div class="card" style="display:flex;flex-direction:column">
+          <div class="card-head">
+            <h2>与桌宠对话</h2>
+            <span class="hint" id="chat-rounds"></span>
+          </div>
+          <div class="card-body chat-wrap">
+            <div class="chat-head">
+              <select id="chat-pet-select"></select>
+              <input type="number" id="chat-rounds-input" min="0" max="200" placeholder="轮数（空=配置）">
+              <button type="button" class="btn sm" id="chat-reload">刷新历史</button>
+              <span class="spacer" style="flex:1"></span>
+              <button type="button" class="btn sm ghost" id="chat-clear">清空显示</button>
+            </div>
+
+            <div class="messages" id="messages"></div>
+
+            <div class="composer">
+              <div class="typing" id="typing" style="visibility:hidden">
+                <i></i><i></i><i></i><span>桌宠正在想…</span>
+              </div>
+              <div class="composer-row">
+                <textarea id="chat-input" rows="2" placeholder="说点什么…（Enter 发送，Shift+Enter 换行）"></textarea>
+                <button type="button" class="btn primary" id="chat-send">发送</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 设置 ── -->
+      <section class="view" id="view-settings">
+        <div class="card">
+          <div class="card-head">
+            <h2>桌宠</h2>
+            <span class="hint">改完点下面的保存</span>
+          </div>
+          <div class="card-body">
+            <div class="pet-rows" id="pet-rows">
+              <div class="empty-note">加载中…</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:13px;flex-wrap:wrap">
+              <button type="button" class="btn sm" id="pet-add">+ 添加一只</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h2>全局开关</h2></div>
+          <div class="card-body">
+            <div class="switches">
+              <label class="chk"><input type="checkbox" id="sw-notifications"> 系统通知</label>
+              <label class="chk"><input type="checkbox" id="sw-whisper-image"> 碎碎念配图</label>
+              <label class="chk"><input type="checkbox" id="sw-chat-image"> 对话配图</label>
+              <label class="chk"><input type="checkbox" id="sw-confine"> 限制在屏幕内</label>
+            </div>
+            <div class="field" style="margin-top:10px;max-width:220px">
+              <label>对话历史条数（轮，1 轮 = 1 问 1 答；0 = 不带历史）</label>
+              <input type="number" id="sw-memory-rounds" min="0" step="1">
+            </div>
+            <div class="field" style="margin-top:10px;max-width:220px">
+              <label>对话配图张数上限（0 = 不限制，全部发给模型）</label>
+              <input type="number" id="sw-image-limit" min="0" step="1">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>AI 模型</h2>
+            <span class="hint">与 DSH 自己的模型选择器同源</span>
+          </div>
+          <div class="card-body">
+            <div class="card-desc">
+              碎碎念与对话各自用哪个模型（<span class="mono">whisperModel</span> /
+              <span class="mono">chatModel</span>）。<b>要么都留空（= 跟随当前对话的模型）、要么都选</b>
+              ——只选一半是非法组合（宿主直接回 400）。清单来自 <span class="mono">GET /models</span>。
+            </div>
+            <div class="fields" id="model-rows" style="margin-top:10px">
+              <div class="empty-note">加载中…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>物理（拖拽抛掷手感）</h2>
+            <span class="hint">全局：写用户级配置的 physics 段</span>
+          </div>
+          <div class="card-body">
+            <div class="card-desc">
+              重力 / 弹性 / 地面摩擦 / 总力度 + 两个开关。浏览器保存后即时生效；桌面端由保存触发的
+              Helper 重启重新读取——<span class="mono">physics</span> 在 sprite 构造时只读一次。
+            </div>
+            <div class="fields" id="phys-rows" style="margin-top:10px"></div>
+            <div class="switches" id="phys-toggles"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>保存与生效</h2>
+            <span class="hint">会真的写盘</span>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn primary" id="cfg-save">保存配置</button>
+              <button type="button" class="btn" id="cfg-reload">重载桌面端</button>
+              <button type="button" class="btn danger" id="cfg-default">恢复默认</button>
+              <button type="button" class="btn ghost" id="cfg-refresh">放弃修改并重新读取</button>
+            </div>
+            <div class="divider"></div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <label class="chk"><input type="checkbox" id="cfg-force"> 保存时强制覆盖（用户配置文件损坏时使用）</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>可用模型</h2>
+            <span class="hint">与 DSH 自己的模型选择器同源</span>
+          </div>
+          <div class="card-body" id="models-body">
+            <button type="button" class="btn sm" id="models-load">加载模型清单</button>
+            <!-- 注意：结果写进 #models-list，不能清 #models-body —— 否则会把上面这个按钮一起清掉，只能加载一次 -->
+            <div id="models-list" style="margin-top:10px"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>存储位置</h2>
+            <span class="hint">配置文件与数据落在哪</span>
+          </div>
+          <div class="card-body" id="meta-body">
+            <button type="button" class="btn sm" id="meta-load">加载路径清单</button>
+            <!-- 同上：结果写进 #meta-list，保留触发按钮 -->
+            <div id="meta-list" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ══ 活动日志 ══ -->
+    <aside class="logpanel">
+      <div class="log-head">
+        <span>活动日志</span>
+        <span class="count" id="log-count">0</span>
+        <button type="button" class="btn sm ghost" id="log-clear">清空</button>
+      </div>
+      <div class="log-body" id="log-body">
+        <div class="empty-note" style="padding:8px">这里会显示控制台发出的每个请求</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    "use strict";
+
+    // ═══════════════════════════════════════════════════════════════
+    // 这个页面扮演一个**第三方消费方**：它只用 /dsh-pet-7340 下那套
+    // 公开 HTTP 接口，自己轮询状态、自己比对 counter、自己维护界面。
+    // 界面上不出现"端点"这类词——接口是它内部的实现手段。
+    // ═══════════════════════════════════════════════════════════════
+
+    const PREFIX = "/dsh-pet-7340";
+    const POLL_MS = 1000;
+
+    const S = {
+      port: 3080,
+      connected: null,     // null=未知 true/false
+      pets: [],            // [{ id, name, entry }]
+      petId: "main",
+      chatPetId: "main",
+      baseline: {},        // 叶子路径 → 上次见到的 counter（首拉只记基线，不渲染）
+      firstPoll: true,
+      polls: 0,            // 轮询次数（活动日志有上限，计数另记）
+      say: null,           // { text, image } 或 { text, url }（配图两种形态二选一）
+      sayAt: 0,
+      sayCounter: 0,
+      notes: [],           // 客户端自己攒的通知历史（host 侧只有一个槽位）
+      chat: [],
+      awaiting: false,
+      activity: [],
+      timers: {},
+      lock: null,          // 本页当前**持有**的锁 { petId, lockId, expiresAt }（占用锁，issue #122 第 4 项）
+      lockLeaf: null,      // 最近一次从 /state 读到的占用（真实状态；本页手里那把只是它的副本）
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, cls, text) => {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text !== undefined) n.textContent = text;
+      return n;
+    };
+    const enc = (p) => String(p).split("/").map(encodeURIComponent).join("/");
+    /**
+     * 表情包名 → 图片地址。
+     * 注意：这个函数只服务**名称形态**——宿主在 say 叶子里存的 `image` 是**表情包名**
+     *（如「可爱」），不是 URL；直接把 name 当 src 用会被解析成相对路径 → 裂图。
+     *（配图的另一种形态 `url` 是完整地址，**直接当 src 用**、不走这个函数，见 renderSay。）
+     *
+     * 拼法与两端共用逻辑一致：`<前缀>/pic/memes/<素材根>/<名称>.png`（素材根与名称都要编码）。
+     * 素材根 = 该宠物所属条目（= `/config` 的顶层键）——图片归属与动画同一套：
+     * `pet/<素材根>-memes/` 独占 → 用户 `memes/` → 包内 `assets/memes/`。
+     * **必须带素材根**：pet pack 的表情包目录是独占的，用旧的两段形式（= main 的回落链）
+     * 取不到它的图，只会裂图。素材根缺省/空白时才退回两段形式（包内表情包照常显示）。
+     */
+    const memeUrl = (name, assetRoot) => {
+      const root = String(assetRoot == null ? "" : assetRoot).trim();
+      const prefix = root ? "/pic/memes/" + encodeURIComponent(root) : "/pic/memes";
+      return PREFIX + prefix + "/" + encodeURIComponent(String(name)) + ".png";
+    };
+    const hhmmss = (t) => new Date(t).toLocaleTimeString("zh-CN", { hour12: false });
+
+    // ── 提示条 ──
+    function toast(msg, kind) {
+      const t = el("div", "toast" + (kind ? " " + kind : ""), msg);
+      $("toasts").appendChild(t);
+      setTimeout(() => {
+        t.style.transition = "opacity .2s";
+        t.style.opacity = "0";
+        setTimeout(() => t.remove(), 220);
+      }, 3200);
+    }
+
+    // ── 活动日志（只记录，不参与业务） ──
+    function logActivity(method, path, res) {
+      S.activity.unshift({
+        method,
+        path,
+        status: res.status,
+        ms: res.ms,
+        err: res.error || (res.body && res.body.proxyError) || (res.body && res.body.error) || "",
+        at: Date.now(),
+      });
+      if (S.activity.length > 60) S.activity.length = 60;
+      renderActivity();
+    }
+
+    function renderActivity() {
+      $("log-count").textContent = S.activity.length;
+      const box = $("log-body");
+      box.innerHTML = "";
+      if (!S.activity.length) {
+        box.appendChild(el("div", "empty-note", "这里会显示控制台发出的每个请求"));
+        box.firstChild.style.padding = "8px";
+        return;
+      }
+      for (const a of S.activity) {
+        const item = el("div", "log-item");
+        const l1 = el("div", "l1");
+        l1.appendChild(el("span", "m " + a.method, a.method));
+        l1.appendChild(el("span", "u", a.path));
+        const st = el("span", "s " + (a.status >= 200 && a.status < 300 ? "ok" : "bad"),
+          a.status ? a.status + " · " + a.ms + "ms" : "失败");
+        l1.appendChild(st);
+        item.appendChild(l1);
+        if (a.err) item.appendChild(el("div", "err", a.err));
+        box.appendChild(item);
+      }
+    }
+
+    // ── 请求层（永不抛） ──
+    async function api(method, path, opts = {}) {
+      const url = PREFIX + path;
+      const t0 = performance.now();
+      const init = { method, cache: "no-store" };
+      if (opts.body !== undefined) {
+        init.headers = { "content-type": "application/json" };
+        init.body = JSON.stringify(opts.body);
+      }
+      let out;
+      try {
+        const res = await fetch(url, init);
+        const ms = Math.round(performance.now() - t0);
+        out = { ok: res.ok, status: res.status, ms };
+        if (opts.raw) {
+          out.contentType = res.headers.get("content-type") || "";
+        } else {
+          const text = await res.text();
+          out.text = text;
+          try { out.body = JSON.parse(text); } catch { out.body = undefined; }
+        }
+      } catch (e) {
+        out = { ok: false, status: 0, ms: Math.round(performance.now() - t0), error: "请求没能发出去：" + e.message };
+      }
+      logActivity(method, url, out);
+      return out;
+    }
+
+    const GET = (p, o) => api("GET", p, o);
+    const POST = (p, o = {}) => api("POST", p, { body: {}, ...o });
+    const PUT = (p, o) => api("PUT", p, o);
+
+    // ═══════════════════════════════════════════════════════════════
+    // 状态轮询：整页唯一的数据来源
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * 把 S 拍平成 [路径, 叶子] —— 路径是**不透明键**，只做字符串拼接，
+     * 绝不按 '.' 切分（宠物 id 可以含点号，切分必然出错）。
+     */
+    function walkLeaves(s) {
+      const out = [];
+      const sections = (s && s.sections) || {};
+      for (const name of Object.keys(sections)) {
+        const leaf = sections[name];
+        if (leaf && typeof leaf.counter === "number") out.push(["sections." + name, leaf]);
+      }
+      const pets = (s && s.pets) || {};
+      for (const pid of Object.keys(pets)) {
+        const leaves = pets[pid] || {};
+        for (const name of Object.keys(leaves)) {
+          const leaf = leaves[name];
+          if (leaf && typeof leaf.counter === "number") out.push(["pets." + pid + "." + name, leaf]);
+        }
+      }
+      return out;
+    }
+
+    async function poll() {
+      S.polls++;
+      const r = await GET("/state");
+      setConnected(r.status === 200);
+
+      if (r.status !== 200 || !r.body) {
+        if (r.status === 0 || r.status >= 500) {
+          renderLeaves(null, r);
+        }
+        return;
+      }
+      const s = r.body;
+      S.lastState = s;
+      $("state-json").textContent = JSON.stringify(s, null, 2);
+
+      const leaves = walkLeaves(s);
+
+      // 首拉只记基线、不渲染（否则刷新页面会把旧气泡/旧通知重放一遍）
+      if (S.firstPoll) {
+        for (const [p, leaf] of leaves) S.baseline[p] = leaf.counter;
+        S.firstPoll = false;
+        renderLeaves(leaves, r, {});
+        // 首拉也要把当前状态显示出来
+        applyLeaf(s.sections.balance, "sections.balance");
+        applyLeaf(s.sections.workStatus, "sections.workStatus");
+        applyLeaf(s.sections.notify, "sections.notify", { replay: false });
+        for (const [p, leaf] of leaves) {
+          if (p.startsWith("pets.") && p.endsWith(".say")) applyLeaf(leaf, p, { initial: true });
+        }
+        await loadPets();
+        syncLock(s);
+        renderLock();
+        return;
+      }
+
+      const changed = {};
+      for (const [p, leaf] of leaves) {
+        if (S.baseline[p] === leaf.counter) continue;
+        S.baseline[p] = leaf.counter;
+        changed[p] = leaf;
+        applyLeaf(leaf, p);
+      }
+      renderLeaves(leaves, r, changed);
+      // 占用锁（issue #122 第 4 项）：每秒跟着这一拍刷新一次——倒计时要走字，
+      // 而且**宿主不会推"锁没了"**（它那侧是懒判过期），只能靠这里按叶子的 expiresAt 自己判
+      syncLock(s);
+      renderLock();
+    }
+
+    /** 一个叶子变了 → 更新对应界面（路径当不透明键：用前后缀切片取宠物 id） */
+    function applyLeaf(leaf, path, opt = {}) {
+      if (!leaf) return;
+      if (path === "sections.balance") return renderBalance(leaf.data);
+      if (path === "sections.workStatus") return renderWork(leaf.data);
+      if (path === "sections.notify") return pushNotify(leaf.data, opt);
+      if (path.startsWith("pets.") && path.endsWith(".say")) {
+        // 取 id：剥掉 "pets." 前缀与 ".say" 后缀（不按 '.' 切分）
+        const pid = path.slice("pets.".length, path.length - ".say".length);
+        if (pid === S.petId) renderSay(leaf.data, pid);
+        if (pid === S.chatPetId && opt.initial !== true) maybeChatReply(leaf.data);
+      }
+    }
+
+    function setConnected(ok) {
+      if (S.connected === ok) return;
+      S.connected = ok;
+      const dot = $("conn-dot");
+      dot.className = "dot " + (ok ? "on" : "off");
+      $("conn-label").textContent = ok ? "已连接 · " + S.port : "未连接";
+      if (!ok) toast("连不上桌宠宿主——确认 DSH 在跑、端口填对", "bad");
+    }
+
+    // ── 实时状态（叶子表） ──
+    function renderLeaves(leaves, res, changed = {}) {
+      const box = $("leaf-list");
+      box.innerHTML = "";
+      if (!leaves) {
+        box.appendChild(el("div", "empty-note",
+          res && res.error ? res.error : "拿不到状态（宿主未响应）"));
+        $("leaf-hint").textContent = "未连接";
+        return;
+      }
+      $("leaf-hint").textContent = "每秒轮询一次 · 共 " + leaves.length + " 个状态位";
+      for (const [p, leaf] of leaves) {
+        const isChanged = changed[p] !== undefined;
+        const row = el("div", "leaf" + (isChanged ? " changed" : ""));
+        const pn = el("span", "p", p);
+        if (isChanged) pn.appendChild(el("span", "flash", "变了"));
+        row.appendChild(pn);
+        row.appendChild(el("span", "d", leaf.data === null ? "null" : JSON.stringify(leaf.data)));
+        row.appendChild(el("span", "c", String(leaf.counter).slice(-7)));
+        box.appendChild(row);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 说话气泡
+    // ═══════════════════════════════════════════════════════════════
+
+    function renderSay(data, petId) {
+      const b = $("say-bubble");
+      b.innerHTML = "";
+      // 清空指令（POST /bubble/clear 写入 { clear: true }）：气泡被收起，不是"没说过话"
+      if (data && data.clear === true) {
+        b.className = "bubble empty";
+        b.textContent = "（气泡已被清空）";
+        $("say-time").textContent = hhmmss(Date.now());
+        return;
+      }
+      if (!data || typeof data.text !== "string" || !data.text) {
+        b.className = "bubble empty";
+        b.textContent = "还没有说过话";
+        $("say-time").textContent = "";
+        return;
+      }
+      S.say = data;
+      S.sayAt = Date.now();
+      b.className = "bubble";
+      b.appendChild(document.createTextNode(data.text));
+      // 配图两种形态二选一（issue #122 第 1 条），**由字段名区分**、不靠嗅探：
+      //   url   → 第三方自带的地址，直接当 src 用（与本页 origin 无关）；
+      //   image → 池内名称，须经 memeUrl 拼地址；素材根取该宠物所属条目（配图归属按条目分）。
+      if (typeof data.url === "string" && data.url) {
+        const img = el("img", "meme");
+        img.src = data.url;
+        img.alt = "自带配图";
+        img.onerror = () => img.remove();
+        b.appendChild(img);
+      } else if (typeof data.image === "string" && data.image) {
+        const img = el("img", "meme");
+        img.src = memeUrl(data.image, assetRootOf(petId));
+        img.alt = data.image;
+        img.onerror = () => img.remove();
+        b.appendChild(img);
+      }
+      // 时长与联动开关（POST /broadcast 的两个新参数）。碎碎念/对话回复不写这两个字段，
+      // 于是这里显示的就是缺省值——正好说明"老行为 = 10s + 联动"。
+      const dur = typeof data.duration === "number" ? data.duration : 10000;
+      const linked = data.anim !== false;
+      $("say-time").textContent =
+        hhmmss(S.sayAt) +
+        " · " +
+        (dur === 0 ? "时长 0（不显示）" : dur / 1000 + "s") +
+        (linked ? " · 联动动画" : " · 不联动动画");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 工作状态
+    // ═══════════════════════════════════════════════════════════════
+
+    const WORK = {
+      thinking: ["思考中", "indigo"],
+      working: ["工作中", "blue"],
+      result: ["整理中", "cyan"],
+      waiting: ["等待你", "amber"],
+      success: ["完成", "green"],
+      error: ["出错", "red"],
+    };
+
+    function renderWork(data) {
+      const pill = $("work-pill");
+      const st = data && data.state;
+      const m = st && WORK[st] ? WORK[st] : null;
+      pill.className = "pill " + (m ? m[1] : "gray");
+      pill.textContent = m ? m[0] : "空闲";
+      const task = data && typeof data.task === "string" && data.task ? data.task : "";
+      $("work-task").textContent = task || "—";
+      $("work-task").style.color = task ? "" : "var(--faint)";
+      const current = $("ws-current");
+      if (current) current.textContent = "当前快照：" + (data ? JSON.stringify(data) : "—");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 余额
+    // ═══════════════════════════════════════════════════════════════
+
+    function pctClass(v) { return v >= 90 ? "bad" : v >= 70 ? "warn" : ""; }
+
+    function renderBalance(data) {
+      const box = $("bal-body");
+      box.innerHTML = "";
+      if (!data) {
+        box.appendChild(el("div", "empty-note", "还没有数据"));
+        return;
+      }
+      if (data.ok !== true) {
+        const reason = { unsupported: "该服务商不支持查询余额", "credential-missing": "缺少凭证", "fetch-error": "抓取失败" }[data.reason] || "不可用";
+        const wrap = el("div");
+        wrap.appendChild(el("span", "pill red", reason));
+        if (data.message) {
+          const t = el("div", "stat-sub", data.message);
+          t.style.marginTop = "8px";
+          t.style.wordBreak = "break-word";
+          wrap.appendChild(t);
+        }
+        box.appendChild(wrap);
+        const prov = el("div", "stat-sub", "服务商：" + (data.provider || "unknown"));
+        prov.style.marginTop = "8px";
+        box.appendChild(prov);
+        $("bal-age").textContent = data.manual ? "手动刷新" : "";
+        return;
+      }
+
+      // 注意：/state 里是**宿主原始形状** —— 金额/用量都在内层 data 里
+      // （{ ok, provider, kind, manual?, data: { total, ... } }），
+      // 不是客户端 shared 那套拍平后的 BalanceView。
+      const d = data.data && typeof data.data === "object" ? data.data : {};
+
+      if (data.kind === "deepseek") {
+        const head = el("div");
+        head.appendChild(el("span", "bal-amount", d.total ?? "—"));
+        head.appendChild(el("span", "bal-cur", d.currency || ""));
+        box.appendChild(head);
+        const rows = el("div");
+        rows.style.marginTop = "10px";
+        if (d.granted) rows.appendChild(kv("赠送", d.granted));
+        if (d.toppedUp) rows.appendChild(kv("充值", d.toppedUp));
+        if (rows.childElementCount) box.appendChild(rows);
+      } else if (data.kind === "opencode" || data.kind === "commandcode") {
+        for (const [label, v, reset] of [
+          ["滚动窗口", d.rolling, d.rollingResetsAt],
+          ["本周", d.weekly, d.weeklyResetsAt],
+          ["本月", d.monthly, d.monthlyResetsAt],
+        ]) {
+          const n = Number(v);
+          if (!Number.isFinite(n)) continue;
+          const m = el("div", "meter");
+          const top = el("div", "meter-top");
+          top.appendChild(el("span", "k", label + (reset ? " · " + shortReset(reset) : "")));
+          top.appendChild(el("span", "v", Math.round(n) + "%"));
+          m.appendChild(top);
+          const bar = el("div", "bar");
+          const fill = el("i", pctClass(n));
+          fill.style.width = Math.max(0, Math.min(100, n)) + "%";
+          bar.appendChild(fill);
+          m.appendChild(bar);
+          box.appendChild(m);
+        }
+      } else {
+        box.appendChild(el("div", "empty-note", "认不出的余额类型"));
+      }
+
+      const prov = el("div", "stat-sub", "服务商：" + (data.provider || "unknown"));
+      prov.style.marginTop = "10px";
+      box.appendChild(prov);
+      $("bal-age").textContent = data.manual ? "本次为手动刷新" : "";
+    }
+
+    function kv(k, v) {
+      const r = el("div", "kv");
+      r.appendChild(el("span", "k", k));
+      r.appendChild(el("span", "v", String(v)));
+      return r;
+    }
+
+    function shortReset(iso) {
+      const d = new Date(iso);
+      if (isNaN(d)) return "";
+      return d.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 通知（host 只有一个槽位，客户端自己攒历史）
+    // ═══════════════════════════════════════════════════════════════
+
+    const NOTIFY_ICON = {
+      "session/event": "✅",
+      "approval/requested": "🔐",
+      "question/requested": "❓",
+      "host/agent-error": "⚠️",
+    };
+
+    function notifyText(frame) {
+      if (!frame || !frame.type) return null;
+      if (frame.type === "session/event") {
+        const reason = frame.event && frame.event.data && frame.event.data.reason;
+        const kind = reason && reason.kind;
+        if (kind === "completed") return { t: "对话完成", b: "", i: "✅" };
+        if (kind === "error") return { t: "生成失败", b: (reason.error && reason.error.message) || "", i: "❌" };
+        if (kind === "max-tokens") return { t: "输出被截断", b: "已达到输出 token 上限", i: "✂️" };
+        return null;                                   // aborted 等不弹
+      }
+      if (frame.type === "approval/requested") {
+        return { t: "正在申请权限", b: (frame.toolName ? "工具「" + frame.toolName + "」" : "") + (frame.reason ? "：" + frame.reason : ""), i: "🔐" };
+      }
+      if (frame.type === "question/requested") {
+        const q = frame.questions && frame.questions[0] && frame.questions[0].question;
+        return { t: "模型在等你回答", b: q || "", i: "❓" };
+      }
+      if (frame.type === "host/agent-error") {
+        return { t: "生成失败", b: frame.message || "", i: "⚠️" };
+      }
+      return null;
+    }
+
+    function pushNotify(frame, opt = {}) {
+      const info = notifyText(frame);
+      if (!info) return;
+      // 同一个 counter 的重复渲染（首拉/编辑后重读）不该重复入列
+      const key = JSON.stringify(frame);
+      const last = S.notes[0];
+      if (last && last.key === key) return;
+      S.notes.unshift({ ...info, key, at: Date.now() });
+      if (S.notes.length > 20) S.notes.length = 20;
+      renderNotes();
+    }
+
+    function renderNotes() {
+      const box = $("notify-feed");
+      box.innerHTML = "";
+      if (!S.notes.length) {
+        box.appendChild(el("div", "empty-note", "还没有通知"));
+        return;
+      }
+      for (const n of S.notes) {
+        const item = el("div", "feed-item");
+        item.appendChild(el("span", "fi-ico", n.i));
+        const b = el("div", "fi-body");
+        b.appendChild(el("div", "fi-title", n.t));
+        if (n.b) b.appendChild(el("div", "fi-text", n.b));
+        item.appendChild(b);
+        item.appendChild(el("span", "fi-time", hhmmss(n.at)));
+        box.appendChild(item);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 桌宠列表
+    // ═══════════════════════════════════════════════════════════════
+
+    async function loadPets() {
+      const r = await GET("/config");
+      if (r.status !== 200 || !r.body) return;
+      S.cfg = r.body;
+      const pets = [];
+      for (const [entry, conf] of Object.entries(r.body)) {
+        if (!conf || !Array.isArray(conf.pets)) continue;
+        for (const p of conf.pets) {
+          if (p && p.id) pets.push({ id: String(p.id), name: String(p.name || p.id), entry, conf: p });
+        }
+      }
+      S.pets = pets;
+      if (!pets.some((p) => p.id === S.petId)) S.petId = pets.length ? pets[0].id : "main";
+      if (!pets.some((p) => p.id === S.chatPetId)) S.chatPetId = S.petId;
+      renderPetIdentity();
+      fillPetSelects();
+      fillAnimSelect();
+      void fillBcImageSelect(); // 广播配图下拉也按条目分，配置重载后要重填
+      renderSettingsPets();
+    }
+
+    function currentPet() {
+      return S.pets.find((p) => p.id === S.petId) || null;
+    }
+
+    /**
+     * 宠物 id → 素材根（= 它所属的条目名，也就是 `/config` 的顶层键）。
+     * 表情包地址要带素材根，理由与动画池一样：归属按**条目**分，
+     * pet pack 的 `pet/<素材根>-memes/` 是独占目录，不带素材根就取不到它的图。
+     * 找不到该宠物时返回空串（memeUrl 会退回包内的两段形式）。
+     */
+    function assetRootOf(petId) {
+      const p = S.pets.find((x) => x.id === petId);
+      return p ? p.entry : "";
+    }
+
+    function renderPetIdentity() {
+      const p = currentPet();
+      const name = p ? p.name : S.petId;
+      $("pet-name").textContent = name;
+      $("pet-id").textContent = "id: " + (p ? p.id : S.petId) + (p ? " · 条目 " + p.entry : "");
+
+      // 头像用包内表情包（同一套接口提供的静态资源）。
+      // 注意：这里会清空 .avatar，所以兜底元素必须**现建**，不能去查一个已经被清掉的节点。
+      const av = $("pet-avatar");
+      const showFallback = () => {
+        av.innerHTML = "";
+        av.appendChild(el("span", "fallback", name ? name.slice(0, 1) : "?"));
+      };
+      av.innerHTML = "";
+      const img = el("img");
+      img.alt = name;
+      img.src = memeUrl("可爱");
+      img.onerror = showFallback;
+      av.appendChild(img);
+
+      document.title = name + " · 桌宠控制台";
+    }
+
+    /** 从最近一次状态快照里取某只宠物此刻说的话（切宠物时用，不必干等下一次轮询） */
+    function showSayFor(petId) {
+      const s = S.lastState;
+      const leaf = s && s.pets && s.pets[petId] && s.pets[petId].say;
+      if (leaf) {
+        S.baseline["pets." + petId + ".say"] = leaf.counter;
+        renderSay(leaf.data, petId);
+      } else {
+        renderSay(null, petId);
+      }
+    }
+
+    function fillPetSelects() {
+      for (const id of ["pet-select", "chat-pet-select", "bc-pet", "anim-pet", "disp-pet", "mv-pet", "lk-pet"]) {
+        const sel = $(id);
+        sel.innerHTML = "";
+        for (const p of S.pets) {
+          const o = el("option", null, p.name + "（" + p.id + "）");
+          o.value = p.id;
+          sel.appendChild(o);
+        }
+        if (!S.pets.length) {
+          const o = el("option", null, S.petId);
+          o.value = S.petId;
+          sel.appendChild(o);
+        }
+        sel.value = id === "chat-pet-select" ? S.chatPetId : S.petId;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 广播配图下拉：选项 = 该宠物所属条目的表情包池
+    // ═══════════════════════════════════════════════════════════════
+    // 为什么不做成自由文本框：配图名必须是**池内**的名字（宿主 decideBroadcast 用 matchMeme
+    // 校验，池外一律 unknown-image 被拒），而"配置里写了"不等于"文件在"——池的真实成员判据是
+    // 「有非空描述 + 磁盘上有 <名>.png」。手打名字既容易写错，也看不出哪几张其实已经没文件了。
+    // 这里把两件事都替用户算好：
+    //   - 候选 = 该条目 memes 里有非空描述的键（与宿主 readMemePool 同一口径）；
+    //   - 可用 = 再叠一层存在性核对：**HEAD** /pic/memes/<素材根>/<名>.png。该路由与池走
+    //     同一条目录链（pet/<根>-memes/ 独占 → 用户 memes/ → 包内 assets/memes/），
+    //     200 = 池内、404 = 池外。用 HEAD 而不是 GET：表情包单张能到 1MB+，
+    //     GET 探测会白传几十 MB；HEAD 只回状态码（Node 对 HEAD 不写 body）。
+
+    /** HEAD 探测缓存（key = 素材根 \0 名称）——同一张图一次会话只探一次 */
+    const memeExistsCache = new Map();
+
+    /** 该图在宿主侧是否真实存在（= 池成员判据） */
+    async function memeExists(assetRoot, name) {
+      const key = assetRoot + "\u0000" + name;
+      if (memeExistsCache.has(key)) return memeExistsCache.get(key);
+      let ok = false;
+      try {
+        const res = await fetch(memeUrl(name, assetRoot), { method: "HEAD", cache: "no-store" });
+        ok = res.status === 200;
+      } catch {
+        ok = false; // 连不上/被拦 → 当作"不存在的图"（下拉框宁少勿错）
+      }
+      memeExistsCache.set(key, ok);
+      return ok;
+    }
+
+    /** 广播目标宠物所属条目的配图候选（配置口径，尚未核对文件是否存在） */
+    function bcMemeCandidates() {
+      const petId = $("bc-pet").value || S.petId;
+      // 素材根缺省回落 main：两段形式 /pic/memes/<名>.png 与 /pic/memes/main/<名>.png
+      // 在宿主侧是同一条目录链（未升级的客户端走的就是前者），这里显式成 main 只为提示文案不出现 "?"
+      const root = assetRootOf(petId) || "main";
+      const conf = S.cfg && S.cfg[root] ? S.cfg[root] : null;
+      const memes = conf && conf.memes && typeof conf.memes === "object" ? conf.memes : {};
+      const list = [];
+      for (const [name, desc] of Object.entries(memes)) {
+        const text = typeof desc === "string" ? desc.trim() : "";
+        if (!name || !text) continue; // 与宿主 readMemePool 同一口径：键空或描述空即不参与
+        list.push({ name, desc: text });
+      }
+      return { root, list };
+    }
+
+    const clipText = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+
+    /** 并发上限内批量探测（几十张图同时读盘没有意义，6 路足够跑满带宽） */
+    async function probeMemes(root, list) {
+      const flags = new Map();
+      const queue = list.slice();
+      const worker = async () => {
+        while (queue.length) {
+          const m = queue.shift();
+          flags.set(m.name, await memeExists(root, m.name));
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(6, list.length) }, () => worker()));
+      return flags;
+    }
+
+    /** 填充序号：连点两次宠物下拉时，只认最后一次的结果（否则旧条目的池会覆盖新条目的） */
+    let bcFillSeq = 0;
+
+    /**
+     * 重填广播配图下拉框 —— 换宠物 / 重载配置 / 点「刷新图片清单」后都要重填。
+     * 池是按**条目**分的（pet pack 的 -memes/ 独占），所以换宠物必须重填，
+     * 否则会列出别只宠物条目的名字，点了必然 unknown-image。
+     * @param force 忽略存在性缓存（用户刚往 memes/ 里丢了新图时用）
+     */
+    async function fillBcImageSelect(opt = {}) {
+      const sel = $("bc-image");
+      const hint = $("bc-image-hint");
+      if (!sel || !hint) return;
+      const seq = ++bcFillSeq;
+      const prev = sel.value;
+      const { root, list } = bcMemeCandidates();
+      if (opt.force) {
+        for (const key of [...memeExistsCache.keys()]) {
+          if (key.startsWith(root + "\u0000")) memeExistsCache.delete(key);
+        }
+      }
+      sel.innerHTML = "";
+      if (!list.length) {
+        const o = el("option", null, "（该条目没有配置配图）");
+        o.value = "";
+        sel.appendChild(o);
+        hint.textContent =
+          "条目 " + (root || "?") + " 的 memes 里没有可用条目（键为空或描述为空）——投喂只会发文字。";
+        return;
+      }
+      // 探测期间先占位：一次几十张 HEAD 要跑一两秒，别让下拉框在这期间是空的
+      const wait = el("option", null, "（正在核对 " + list.length + " 张图…）");
+      wait.value = "";
+      sel.appendChild(wait);
+      hint.textContent = "正在核对 " + list.length + " 张配图是否存在…";
+
+      const flags = await probeMemes(root, list);
+      if (seq !== bcFillSeq) return; // 期间又换过宠物 → 这次结果作废（别覆盖新条目的池）
+      const avail = list.filter((m) => flags.get(m.name));
+      const missing = list.length - avail.length;
+
+      sel.innerHTML = "";
+      const none = el("option", null, "（不配图）");
+      none.value = "";
+      sel.appendChild(none);
+      for (const m of avail) {
+        const o = el("option", null, m.name + " — " + clipText(m.desc, 28));
+        o.value = m.name;
+        sel.appendChild(o);
+      }
+      if (!avail.length) {
+        const o = el("option", null, "（池内没有真实存在的图）");
+        o.value = "";
+        sel.appendChild(o);
+      }
+      // 保留原选择（仅当它在新池里仍可用）；否则显式回到「不配图」——
+      // 不依赖"浏览器重建 option 后会默认选中第一项"这个隐含行为
+      sel.value = prev && avail.some((m) => m.name === prev) ? prev : "";
+
+      const summary =
+        "条目 " + (root || "?") + "：池内 " + avail.length + " 张可用" +
+        (missing ? "，另有 " + missing + " 张只有配置、磁盘上没文件（宿主也会剔除）" : "");
+      // onchange 用属性赋值而不是 addEventListener：本函数会被反复调用，避免监听器叠加
+      sel.onchange = () => {
+        const m = avail.find((x) => x.name === sel.value);
+        hint.textContent = m ? m.name + "：" + m.desc + "　·　" + summary : summary;
+      };
+      sel.onchange();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 对话
+    // ═══════════════════════════════════════════════════════════════
+
+    async function loadChat() {
+      // 轮数留空 = 用配置的 chatMemoryRounds；填了就让服务端按这个值截取（非法值会被判 bad-request）
+      const n = $("chat-rounds-input").value.trim();
+      const q = n ? "&rounds=" + encodeURIComponent(n) : "";
+      const r = await GET("/chat?pet=" + encodeURIComponent(S.chatPetId) + q);
+      if (r.status !== 200 || !r.body || !r.body.ok) {
+        $("chat-rounds").textContent = r.status ? "读取失败" : "未连接";
+        return;
+      }
+      S.chat = (r.body.messages || []).map((m) => ({ role: m.role, text: m.content, ts: m.ts }));
+      $("chat-rounds").textContent = "保留最近 " + r.body.rounds + " 轮";
+      renderChat();
+    }
+
+    function renderChat() {
+      const box = $("messages");
+      box.innerHTML = "";
+      if (!S.chat.length) {
+        box.appendChild(el("div", "empty-note", "还没有对话记录，说点什么吧"));
+        return;
+      }
+      for (const m of S.chat) {
+        const isMe = m.role === "user";
+        const wrap = el("div", "msg " + (isMe ? "me" : "pet"));
+        wrap.appendChild(el("div", "who", isMe ? "我" : "宠"));
+        const col = el("div");
+        col.appendChild(el("div", "bubble2", m.text));
+        col.appendChild(el("div", "ts", m.ts ? hhmmss(m.ts) : ""));
+        wrap.appendChild(col);
+        box.appendChild(wrap);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    /** 桌宠说话了：如果刚才是我们发的消息，就当成回复接进对话 */
+    function maybeChatReply(data) {
+      if (!data || typeof data.text !== "string" || !data.text) return;
+      if (!S.awaiting) return;
+      S.awaiting = false;
+      $("typing").style.visibility = "hidden";
+      S.chat.push({ role: "assistant", text: data.text, ts: Date.now() });
+      renderChat();
+    }
+
+    async function sendChat() {
+      const ta = $("chat-input");
+      const text = ta.value.trim();
+      if (!text) return;
+      if (text.length > 2000) { toast("消息太长（限 2000 字）", "bad"); return; }
+
+      const btn = $("chat-send");
+      btn.disabled = true;
+      S.awaiting = true;
+      S.chat.push({ role: "user", text, ts: Date.now() });
+      renderChat();
+      ta.value = "";
+      $("typing").style.visibility = "visible";
+
+      // 动作接口只回 {ok}，回复从 /state 的 pets.<id>.say 拿
+      const r = await POST("/chat?pet=" + encodeURIComponent(S.chatPetId) + "&surface=" + surfaceOf(), { body: { text } });
+
+      if (!r.ok) {
+        // 失败：把乐观插入的那条撤掉，并说明原因
+        S.awaiting = false;
+        $("typing").style.visibility = "hidden";
+        S.chat.pop();
+        renderChat();
+        const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || ("HTTP " + r.status);
+        toast("发送失败：" + why, "bad");
+      } else {
+        // 立刻补拉一拍，0 延迟拿回复（replies 也走轮询，这里只是不等那 1 秒）
+        const s = await GET("/state");
+        const leaf = s.body && s.body.pets && s.body.pets[S.chatPetId] && s.body.pets[S.chatPetId].say;
+        if (leaf && leaf.counter !== S.baseline["pets." + S.chatPetId + ".say"]) {
+          S.baseline["pets." + S.chatPetId + ".say"] = leaf.counter;
+          if (S.chatPetId === S.petId) renderSay(leaf.data, S.chatPetId);
+          maybeChatReply(leaf.data);
+        }
+      }
+      btn.disabled = false;
+      ta.focus();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 设置
+    // ═══════════════════════════════════════════════════════════════
+
+    const CORNERS = [
+      ["bottom-right", "右下"],
+      ["bottom-left", "左下"],
+      ["top-right", "右上"],
+      ["top-left", "左上"],
+    ];
+    const DISPLAYS = [
+      ["both", "浏览器 + 桌面"],
+      ["web", "仅浏览器"],
+      ["desktop", "仅桌面"],
+      ["none", "都不显示"],
+    ];
+
+    // ── AI 模型（碎碎念 / 对话）────────────────────────────────────
+    // 与宿主 modelSelectionValid 同一套语义：{ provider, model } 要么都空（= 跟随当前对话的模型）、
+    // 要么都非空。只选一半会拼出"A 家服务商 + B 家模型名"这种必然失败的组合，宿主一律回 400。
+    // 清单与 DSH 自己的模型选择器同源：GET /models → [{ id, name, models: [{ id, name }] }]。
+    /** 模型清单（null = 还没拉到；[] = 拉失败 / 没有服务商） */
+    let modelCatalog = null;
+    let modelCatalogPromise = null;
+    /** 清单读取失败的原因（非空时下拉框里的"不在清单里"改标成"清单读取失败"，不误导） */
+    let modelCatalogErr = "";
+    /** 模型草稿（保存前的本地状态）；null = 下次渲染时从成品配置初始化 */
+    let modelDraft = null;
+
+    /** 成品里的 { provider, model } → 两个 trim 过的字符串 */
+    const readModel = (v) => {
+      const o = v && typeof v === "object" ? v : {};
+      return {
+        provider: String(o.provider == null ? "" : o.provider).trim(),
+        model: String(o.model == null ? "" : o.model).trim(),
+      };
+    };
+
+    /** 拉一次模型清单（并发去重；拉不到就退化成"只有跟随当前对话可选"） */
+    function ensureModelCatalog() {
+      if (modelCatalog) return Promise.resolve(modelCatalog);
+      if (!modelCatalogPromise) {
+        modelCatalogPromise = (async () => {
+          const r = await GET("/models");
+          const ok = r.status === 200 && r.body && Array.isArray(r.body.providers);
+          modelCatalog = ok ? r.body.providers : [];
+          modelCatalogErr = ok ? "" : r.error || "HTTP " + r.status;
+          return modelCatalog;
+        })();
+      }
+      return modelCatalogPromise;
+    }
+
+    /** 一格模型选择：服务商下拉 + 模型下拉（换服务商必须同时重置模型） */
+    function modelCellFor(key) {
+      const cur = modelDraft[key];
+      const groups = modelCatalog || [];
+      const wrap = el("div");
+      wrap.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;align-items:center";
+
+      const provPairs = [["", "（跟随当前对话）"]];
+      for (const g of groups) provPairs.push([g.id, g.name || g.id]);
+      // 配置里的服务商不在清单里（下线 / 改名 / 清单没读到）：如实列出并标注，绝不静默改选成别的
+      const away = modelCatalogErr ? "（清单读取失败）" : "（不在清单里）";
+      if (cur.provider && !groups.some((g) => g.id === cur.provider)) {
+        provPairs.push([cur.provider, cur.provider + away]);
+      }
+      const provSel = selectInput(provPairs, cur.provider, (v) => {
+        // 换服务商必须同时重置模型：否则会拼出"A 家服务商 + B 家模型名"这种必然失败的组合
+        const g = groups.find((x) => x.id === v);
+        modelDraft[key] = { provider: v, model: v && g && g.models.length ? g.models[0].id : "" };
+        renderModelFields();
+      });
+      provSel.style.width = "auto";
+      provSel.style.minWidth = "150px";
+      wrap.appendChild(provSel);
+
+      if (!cur.provider) {
+        // 跟随当前对话：没有模型可选（省掉一个必然被禁用的空下拉框）
+        wrap.appendChild(el("span", "empty-note", "跟随当前对话的模型"));
+        return wrap;
+      }
+      const g = groups.find((x) => x.id === cur.provider);
+      const modelPairs = ((g && g.models) || []).map((m) => [m.id, m.name || m.id]);
+      if (!cur.model && modelPairs.length) {
+        // 选了服务商但模型还没定（正常配置不会出现：宿主要求两者同时非空）→ 默认第一个
+        cur.model = modelPairs[0][0];
+        modelDraft[key] = { provider: cur.provider, model: cur.model };
+      }
+      if (cur.model && !modelPairs.some((p) => p[0] === cur.model)) {
+        modelPairs.push([cur.model, cur.model + away]);
+      }
+      if (!modelPairs.length) modelPairs.push(["", "（该服务商列不出模型）"]);
+      const modelSel = selectInput(modelPairs, cur.model, (v) => {
+        modelDraft[key] = { provider: modelDraft[key].provider, model: v };
+      });
+      modelSel.style.width = "auto";
+      modelSel.style.minWidth = "180px";
+      wrap.appendChild(modelSel);
+      return wrap;
+    }
+
+    /** 渲染两格模型选择（清单没到就先显示"加载中"，到了再渲染） */
+    function renderModelFields() {
+      const box = $("model-rows");
+      if (!box) return;
+      if (modelCatalog === null) {
+        // 清单没到就先别画下拉框：此刻服务商列表是空的，会把配置里那个服务商错标成「不在清单里」
+        box.innerHTML = "";
+        box.appendChild(el("div", "empty-note", "模型清单加载中…"));
+        void ensureModelCatalog().then(() => renderModelFields());
+        return;
+      }
+      const main = S.cfg && S.cfg.main ? S.cfg.main : {};
+      if (!modelDraft) {
+        modelDraft = { whisperModel: readModel(main.whisperModel), chatModel: readModel(main.chatModel) };
+      }
+      box.innerHTML = "";
+      for (const [key, label] of [["whisperModel", "碎碎念模型"], ["chatModel", "对话模型"]]) {
+        const cell = el("div", "field");
+        cell.appendChild(el("label", null, label));
+        cell.appendChild(modelCellFor(key));
+        box.appendChild(cell);
+      }
+    }
+
+    // ── 物理（拖拽抛掷手感）────────────────────────────────────────
+    // 与宿主 physicsValid 同一套规则（非法宿主回 400，这里先就地拦下并给提示）。
+    // 默认值取内置 assets/config.jsonc 的 physics 段——成品配置已填满，正常取不到才用这份兜底。
+    const PHYSICS_DEFAULTS = {
+      gravity: 1400,
+      restitution: 0.78,
+      groundFriction: 2.5,
+      ceilingBounce: true,
+      throwPower: 1.0,
+      petCollision: false,
+    };
+    const PHYS_FIELDS = [
+      ["gravity", "重力 gravity", "px/s²，越大落得越快；0 = 无重力（抛出去匀速直线飞）", "50", "0"],
+      ["restitution", "弹性 restitution", "0~1，碰壁 / 落地反弹保留的速度比例（1 = 完全弹性，0 = 撞上即停）", "0.01", "0"],
+      ["groundFriction", "地面摩擦 groundFriction", "/s，落地后水平速度的衰减率；0 = 冰面不减速", "0.1", "0"],
+      ["throwPower", "总力度 throwPower", "> 0，弹簧跟手与甩出初速度的整体倍率（1 = 默认；越大越跟手、甩得越猛）", "0.05", "0.05"],
+    ];
+    /** 物理草稿（保存前的本地状态）；null = 下次渲染时从成品配置初始化 */
+    let physicsDraft = null;
+
+    function renderPhysicsFields() {
+      const rows = $("phys-rows");
+      const toggles = $("phys-toggles");
+      if (!rows || !toggles) return;
+      const main = S.cfg && S.cfg.main ? S.cfg.main : {};
+      if (!physicsDraft) {
+        const p = main.physics && typeof main.physics === "object" ? main.physics : {};
+        physicsDraft = { ...PHYSICS_DEFAULTS };
+        for (const k of Object.keys(PHYSICS_DEFAULTS)) {
+          if (k === "ceilingBounce" || k === "petCollision") {
+            if (typeof p[k] === "boolean") physicsDraft[k] = p[k];
+          } else if (Number.isFinite(Number(p[k]))) {
+            physicsDraft[k] = Number(p[k]);
+          }
+        }
+      }
+      rows.innerHTML = "";
+      for (const [key, label, hint, step, min] of PHYS_FIELDS) {
+        const cell = el("div", "field");
+        cell.title = hint; // 说明收进悬浮提示（与官方设置页的问号同一个文案）
+        cell.appendChild(el("label", null, label));
+        const i = el("input");
+        i.type = "number";
+        i.step = step;
+        i.min = min;
+        i.value = physicsDraft[key];
+        i.addEventListener("input", () => { physicsDraft[key] = Number(i.value); });
+        cell.appendChild(i);
+        rows.appendChild(cell);
+      }
+      toggles.innerHTML = "";
+      toggles.appendChild(
+        chk(
+          "顶部反弹 ceilingBounce",
+          physicsDraft.ceilingBounce,
+          (v) => { physicsDraft.ceilingBounce = v; },
+          "关掉后抛掷可飞出屏幕顶部（重力仍会把它拉回来）",
+        ),
+      );
+      toggles.appendChild(
+        chk(
+          "宠物互撞 petCollision",
+          physicsDraft.petCollision,
+          (v) => { physicsDraft.petCollision = v; },
+          "飞行中的宠物撞到别的宠物按动量守恒弹开（质量 ∝ 尺寸²）",
+        ),
+      );
+    }
+
+    /** physics 段校验（与宿主 physicsValid 同一套规则）——不通过返回原因文案 */
+    function physicsProblem(p) {
+      if (!Number.isFinite(p.gravity) || p.gravity < 0) return "重力要是 ≥ 0 的数字";
+      if (!Number.isFinite(p.restitution) || p.restitution < 0 || p.restitution > 1) return "弹性要在 0~1 之间";
+      if (!Number.isFinite(p.groundFriction) || p.groundFriction < 0) return "地面摩擦要是 ≥ 0 的数字";
+      if (!Number.isFinite(p.throwPower) || p.throwPower <= 0) return "总力度要是 > 0 的数字";
+      return "";
+    }
+
+    /** 草稿 = 界面上正在编辑的宠物列表（保存前的本地状态） */
+    let draft = null;
+
+    /** 三个草稿一起丢掉：下次渲染时从成品配置重新初始化 */
+    function resetDrafts() {
+      draft = null;
+      modelDraft = null;
+      physicsDraft = null;
+    }
+
+    function renderSettingsPets() {
+      const box = $("pet-rows");
+      box.innerHTML = "";
+
+      if (!draft) {
+        // 从配置初始化草稿
+        draft = S.pets.map((p) => ({
+          id: p.id,
+          name: p.name,
+          size: Number(p.conf.size) || 462,
+          display: String(p.conf.display || "both"),
+          balanceEnabled: p.conf.balanceEnabled === true,
+          whisperEnabled: p.conf.whisperEnabled !== false,
+          workStatusEnabled: p.conf.workStatusEnabled !== false,
+          fixedEnabled: p.conf.fixedEnabled === true,
+          corner: (p.conf.position && p.conf.position.corner) || "bottom-right",
+          marginX: Number(p.conf.position && p.conf.position.marginX) || 0,
+          marginY: Number(p.conf.position && p.conf.position.marginY) || 0,
+        }));
+      }
+
+      if (!draft.length) {
+        box.appendChild(el("div", "empty-note", "没有桌宠——点下面的按钮加一只"));
+      }
+
+      draft.forEach((p, i) => {
+        const row = el("div", "pet-row");
+
+        const top = el("div", "pet-row-top");
+        top.appendChild(el("span", "idx", String(i + 1)));
+        const nm = el("div");
+        nm.style.fontWeight = "600";
+        nm.style.fontSize = "13.5px";
+        nm.textContent = p.name || p.id || "（未命名）";
+        top.appendChild(nm);
+        const sp = el("span");
+        sp.style.flex = "1";
+        top.appendChild(sp);
+        const del = el("button", "btn sm danger", "移除");
+        del.type = "button";
+        del.addEventListener("click", () => {
+          draft.splice(i, 1);
+          renderSettingsPets();
+        });
+        top.appendChild(del);
+        row.appendChild(top);
+
+        const fields = el("div", "fields");
+        fields.appendChild(field("显示名", textInput(p.name, (v) => { p.name = v; })));
+        fields.appendChild(field("id", textInput(p.id, (v) => { p.id = v; })));
+        fields.appendChild(field("尺寸", numInput(p.size, (v) => { p.size = v; })));
+        fields.appendChild(field("显示在哪端", selectInput(DISPLAYS, p.display, (v) => { p.display = v; })));
+        fields.appendChild(field("停靠角", selectInput(CORNERS, p.corner, (v) => { p.corner = v; })));
+        fields.appendChild(field("横向边距", numInput(p.marginX, (v) => { p.marginX = v; })));
+        fields.appendChild(field("纵向边距", numInput(p.marginY, (v) => { p.marginY = v; })));
+        row.appendChild(fields);
+
+        const toggles = el("div", "toggles");
+        toggles.appendChild(chk("余额", p.balanceEnabled, (v) => { p.balanceEnabled = v; }));
+        toggles.appendChild(chk("碎碎念", p.whisperEnabled, (v) => { p.whisperEnabled = v; }));
+        toggles.appendChild(chk("工作状态联动", p.workStatusEnabled, (v) => { p.workStatusEnabled = v; }));
+        toggles.appendChild(
+          chk(
+            "宠物固定",
+            p.fixedEnabled,
+            (v) => { p.fixedEnabled = v; },
+            "启用后随机动画不再让宠物自己转向或走开，只播原地待机与随机小动作；右键菜单点播、接口触发、余额/碎碎念/工作状态动画不受影响。",
+          ),
+        );
+        row.appendChild(toggles);
+
+        box.appendChild(row);
+      });
+
+      // 全局开关从 main 条目读
+      const main = S.cfg && S.cfg.main ? S.cfg.main : {};
+      $("sw-notifications").checked = main.notificationsEnabled !== false;
+      $("sw-whisper-image").checked = main.whisperImageEnabled !== false;
+      $("sw-chat-image").checked = main.chatImageEnabled !== false;
+      $("sw-confine").checked = main.confineToScreen === true;
+      $("sw-memory-rounds").value = Number.isFinite(Number(main.chatMemoryRounds))
+        ? Number(main.chatMemoryRounds)
+        : 5;
+      // 兜底值与内置默认对齐（assets/config.jsonc 的 chatImageLimit = 10，不是 0）
+      $("sw-image-limit").value = Number.isFinite(Number(main.chatImageLimit)) ? Number(main.chatImageLimit) : 10;
+
+      // 模型与物理两张卡各自的草稿（同一函数里一起渲染，保证"重置草稿"只有一个入口）
+      renderModelFields();
+      renderPhysicsFields();
+    }
+
+    function field(label, control) {
+      const w = el("div", "field");
+      w.appendChild(el("label", null, label));
+      w.appendChild(control);
+      return w;
+    }
+
+    function textInput(value, onChange) {
+      const i = el("input");
+      i.type = "text";
+      i.value = value ?? "";
+      i.addEventListener("input", () => onChange(i.value));
+      return i;
+    }
+
+    function numInput(value, onChange) {
+      const i = el("input");
+      i.type = "number";
+      i.value = value ?? 0;
+      i.addEventListener("input", () => onChange(Number(i.value)));
+      return i;
+    }
+
+    function selectInput(pairs, value, onChange) {
+      const s = el("select");
+      for (const [v, label] of pairs) {
+        const o = el("option", null, label);
+        o.value = v;
+        s.appendChild(o);
+      }
+      s.value = value;
+      s.addEventListener("change", () => onChange(s.value));
+      return s;
+    }
+
+    function chk(label, checked, onChange, hint) {
+      const l = el("label", "chk");
+      if (hint) l.title = hint;
+      const i = el("input");
+      i.type = "checkbox";
+      i.checked = !!checked;
+      i.addEventListener("change", () => onChange(i.checked));
+      l.appendChild(i);
+      l.appendChild(document.createTextNode(" " + label));
+      return l;
+    }
+
+    async function saveConfig() {
+      if (!draft || !draft.length) { toast("至少要有一只桌宠", "bad"); return; }
+      // 三份草稿同生共死（都由 renderSettingsPets 初始化）——万一还没渲染完就点了保存，别抛 TypeError
+      if (!modelDraft || !physicsDraft) { toast("设置还没加载完，稍等一下再点保存", "bad"); return; }
+      // 物理：与宿主 physicsValid 同一套规则，先就地拦下（否则整包被宿主回 400，用户不知道是哪一项）
+      const physBad = physicsProblem(physicsDraft);
+      if (physBad) { toast("物理参数不合法：" + physBad, "bad"); return; }
+      // 模型：与宿主 modelSelectionValid 同一套规则——要么都空、要么都非空
+      for (const key of ["whisperModel", "chatModel"]) {
+        const v = modelDraft[key];
+        if (!!v.provider !== !!v.model) {
+          toast((key === "whisperModel" ? "碎碎念" : "对话") + "模型：服务商与模型要么都选、要么都留空", "bad");
+          return;
+        }
+      }
+      const body = {
+        pets: draft.map((p) => ({
+          id: String(p.id || "").trim(),
+          name: String(p.name || "").trim(),
+          size: Number(p.size),
+          balanceEnabled: !!p.balanceEnabled,
+          whisperEnabled: !!p.whisperEnabled,
+          workStatusEnabled: !!p.workStatusEnabled,
+          fixedEnabled: !!p.fixedEnabled,
+          display: p.display,
+          position: { corner: p.corner, marginX: Number(p.marginX), marginY: Number(p.marginY) },
+        })),
+        notificationsEnabled: $("sw-notifications").checked,
+        whisperImageEnabled: $("sw-whisper-image").checked,
+        chatImageEnabled: $("sw-chat-image").checked,
+        confineToScreen: $("sw-confine").checked,
+        chatMemoryRounds: Number($("sw-memory-rounds").value),
+        chatImageLimit: Number($("sw-image-limit").value),
+        physics: { ...physicsDraft },
+        whisperModel: { provider: modelDraft.whisperModel.provider, model: modelDraft.whisperModel.model },
+        chatModel: { provider: modelDraft.chatModel.provider, model: modelDraft.chatModel.model },
+      };
+      const force = $("cfg-force").checked ? "?force=1" : "";
+      const r = await PUT("/config" + force, { body });
+
+      if (r.status === 200) {
+        toast("配置已保存，桌面端会自动重建", "ok");
+        resetDrafts();
+        S.cfg = r.body;
+        await loadPets();
+      } else if (r.status === 409) {
+        toast("用户配置文件已损坏，需要勾选「强制覆盖」再保存", "bad");
+        $("cfg-force").checked = true;
+      } else {
+        toast("保存失败：" + ((r.body && r.body.error) || r.error || ("HTTP " + r.status)), "bad");
+      }
+    }
+
+    async function loadModels() {
+      const box = $("models-list");
+      const r = await GET("/models");
+      box.innerHTML = "";
+      if (r.status !== 200 || !r.body) {
+        box.appendChild(el("div", "empty-note", "读取失败：" + (r.error || ("HTTP " + r.status))));
+        return;
+      }
+      const provs = r.body.providers || [];
+      if (!provs.length) {
+        box.appendChild(el("div", "empty-note", "没有已注册的服务商"));
+        return;
+      }
+      for (const p of provs) {
+        const blk = el("div", "provider-block");
+        blk.appendChild(el("div", "provider-name", (p.name || p.id) + "  ·  " + (p.models ? p.models.length : 0) + " 个模型"));
+        const list = el("div", "chip-list");
+        if (p.models && p.models.length) {
+          for (const m of p.models) list.appendChild(el("span", "chip", m.name || m.id));
+        } else {
+          list.appendChild(el("span", "empty-note", "列不出模型"));
+        }
+        blk.appendChild(list);
+        box.appendChild(blk);
+      }
+    }
+
+    async function loadMeta() {
+      const box = $("meta-list");
+      const r = await GET("/config/meta");
+      box.innerHTML = "";
+      if (r.status !== 200 || !r.body) {
+        box.appendChild(el("div", "empty-note", "读取失败：" + (r.error || ("HTTP " + r.status))));
+        return;
+      }
+      const m = r.body;
+      const rows = [
+        ["用户配置", m.user],
+        ["内置默认", m.default],
+        ["动画目录", m.animations],
+        ["卸载 profile", m.profile || "（未识别）"],
+      ];
+      for (const [k, v] of rows) {
+        const row = el("div", "path-row");
+        row.appendChild(el("span", "k", k));
+        row.appendChild(el("span", "v", String(v ?? "—")));
+        box.appendChild(row);
+      }
+      if (Array.isArray(m.storage) && m.storage.length) {
+        for (const s of m.storage) {
+          const row = el("div", "path-row");
+          row.appendChild(el("span", "k", s.label || s.name || "存储"));
+          row.appendChild(el("span", "v", String(s.path || "")));
+          box.appendChild(row);
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 视图切换
+    // ═══════════════════════════════════════════════════════════════
+
+    const TITLES = { overview: "桌宠总览", action: "动作", menu: "其他", state: "实时状态", chat: "对话", settings: "设置" };
+
+    async function showView(v) {
+      document.querySelectorAll(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+      document.querySelectorAll(".view").forEach((s) => s.classList.toggle("active", s.id === "view-" + v));
+      $("view-title").textContent = TITLES[v] || "";
+      $("view-sub").textContent =
+        v === "overview" ? "这些数据来自宿主每秒发布的状态" :
+        v === "action" ? "以“外部插件”身份让桌宠做事——每个动作都会真的发出去" :
+        v === "menu" ? "外部写入工作状态的两种测试；下方保留原有第三方菜单演示" :
+        v === "state" ? "宿主每秒发布的每个状态位（叶子），以及原始 JSON" :
+        v === "chat" ? "回复会同时出现在桌宠气泡里" :
+        v === "settings" ? "改动会写入用户配置文件" : "";
+      if (v === "chat") { await loadChat(); $("chat-input").focus(); }
+      if (v === "settings") { if (!draft) renderSettingsPets(); }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 事件绑定
+    // ═══════════════════════════════════════════════════════════════
+
+    document.querySelectorAll(".nav button").forEach((b) => {
+      b.addEventListener("click", () => void showView(b.dataset.view));
+    });
+
+    $("toggle-log").addEventListener("click", () => {
+      $("app").classList.toggle("show-log");
+      $("app").classList.toggle("no-log");
+    });
+
+    $("log-clear").addEventListener("click", () => {
+      S.activity = [];
+      renderActivity();
+    });
+
+    $("apply-port").addEventListener("click", async () => {
+      const p = Number($("port").value);
+      if (!Number.isInteger(p) || p <= 0 || p > 65535) { toast("端口要是 1–65535 的整数", "bad"); return; }
+      S.port = p;
+      try { await fetch("/__target?port=" + p, { cache: "no-store" }); } catch { /* 无代理时忽略 */ }
+      S.firstPoll = true;
+      S.connected = null;
+      await poll();
+    });
+
+    $("refresh-all").addEventListener("click", async () => {
+      S.firstPoll = true;
+      await poll();
+      await loadPets();
+      if ($("view-chat").classList.contains("active")) await loadChat();
+      toast("已刷新", "ok");
+    });
+
+    $("pet-select").addEventListener("change", (e) => {
+      S.petId = e.target.value;
+      renderPetIdentity();
+      // 用最近一次快照立刻显示这只宠物此刻说的话（否则要等它下次变化才渲染）
+      showSayFor(S.petId);
+      // 点播卡片默认跟随「当前桌宠」（它自己的下拉框可再单独改），然后重填名字列表
+      const animSel = $("anim-pet");
+      if (animSel) animSel.value = S.petId;
+      fillAnimSelect(); // 动画池是按条目分的：换宠物要换下拉框
+    });
+
+    // 点播卡片自己的宠物下拉：换宠物同样要换名字列表（池按条目分，主宠物与 pet pack 完全不同）
+    $("anim-pet").addEventListener("change", fillAnimSelect);
+
+    // 广播卡片自己的宠物下拉：配图池同样按条目分（pet pack 的 -memes/ 独占），换宠物必须重填
+    $("bc-pet").addEventListener("change", () => void fillBcImageSelect());
+
+    // 刚往 memes/ 里丢了新图 → 忽略存在性缓存重探一次（否则要刷新整个页面才看得到）
+    $("bc-image-reload").addEventListener("click", () => void fillBcImageSelect({ force: true }));
+
+    // 配图 / 动画的"来源"下拉：两种形态二选一，切换时只显示对应的那一行输入
+    //（与宿主同一套 XOR —— 两个都给会被判 bad-request，所以界面上根本不给同时填的机会）
+    $("bc-pic-mode").addEventListener("change", () => {
+      const url = $("bc-pic-mode").value === "url";
+      $("bc-image-row").style.display = url ? "none" : "";
+      $("bc-url-row").style.display = url ? "" : "none";
+      $("bc-upload-row").style.display = url ? "" : "none";
+    });
+    $("anim-mode").addEventListener("change", () => {
+      const url = $("anim-mode").value === "url";
+      $("anim-name-row").style.display = url ? "none" : "";
+      $("anim-url-row").style.display = url ? "" : "none";
+      $("anim-upload-row").style.display = url ? "" : "none";
+      // 预览只在真的传过东西之后才占位置
+      const hasPreview = !!$("anim-preview").getAttribute("src");
+      $("anim-upload-preview-row").style.display = url && hasPreview ? "" : "none";
+    });
+
+    $("chat-pet-select").addEventListener("change", (e) => {
+      S.chatPetId = e.target.value;
+      void loadChat();
+    });
+
+    $("btn-whisper").addEventListener("click", async () => {
+      const b = $("btn-whisper");
+      b.disabled = true;
+      b.textContent = "生成中…";
+      const r = await POST("/whisper?pet=" + encodeURIComponent(S.petId) + "&surface=" + surfaceOf());
+      b.disabled = false;
+      b.textContent = "让它说句话";
+      if (r.ok && r.body && r.body.ok === false) {
+        toast("这次没生成出来（" + (r.body.reason || "未知") + "）", "bad");
+        return;
+      }
+      if (!r.ok) { toast("请求失败：" + (r.error || ("HTTP " + r.status)), "bad"); return; }
+      // 立刻补拉一拍，不用等下一次轮询
+      const s = await GET("/state");
+      const leaf = s.body && s.body.pets && s.body.pets[S.petId] && s.body.pets[S.petId].say;
+      if (leaf) {
+        S.baseline["pets." + S.petId + ".say"] = leaf.counter;
+        renderSay(leaf.data, S.petId);
+      }
+    });
+
+    $("btn-balance").addEventListener("click", async () => {
+      const b = $("btn-balance");
+      b.disabled = true;
+      b.textContent = "查询中…";
+      await POST("/balance");
+      b.disabled = false;
+      b.textContent = "刷新余额";
+      const s = await GET("/state");
+      const leaf = s.body && s.body.sections && s.body.sections.balance;
+      if (leaf) {
+        S.baseline["sections.balance"] = leaf.counter;
+        renderBalance(leaf.data);
+      }
+    });
+
+    $("btn-chat-jump").addEventListener("click", () => {
+      S.chatPetId = S.petId;
+      fillPetSelects();
+      void showView("chat");
+    });
+
+    /**
+     * 从某条目的 animations 配置收集可点播的动画名 —— 与右键菜单同一份集合
+     * （菜单树由 buildMenuTree 从这 7 个池推导：idle / turn / drag / clicks /
+     *  moves.actions / categories / events）。这里在消费端复刻一遍，用于填充下拉框；
+     * 真正的合法性校验在宿主侧（写 S 之前）。
+     */
+    function animationNamesOf(animations) {
+      const a = animations && typeof animations === "object" ? animations : {};
+      const out = [];
+      const push = (arr) => {
+        for (const n of arr) if (typeof n === "string" && n && !out.includes(n)) out.push(n);
+      };
+      const strings = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x) : []);
+      push(strings(a.idle));
+      push(strings(a.turn));
+      push(strings(a.drag));
+      push(strings(a.clicks));
+      const moves = a.moves && typeof a.moves === "object" ? a.moves : {};
+      push(Array.isArray(moves.actions) ? moves.actions.map((m) => m && m.name).filter((x) => typeof x === "string" && x) : []);
+      if (Array.isArray(a.categories)) for (const c of a.categories) if (c) push(strings(c.actions));
+      const events = a.events && typeof a.events === "object" ? a.events : {};
+      for (const key of Object.keys(events)) {
+        const pool = events[key];
+        if (!Array.isArray(pool)) continue;
+        const names = [];
+        for (const slot of pool) {
+          if (typeof slot === "string") names.push(slot);
+          else names.push(...strings(slot));
+        }
+        push(names);
+      }
+      return out;
+    }
+
+    /**
+     * 点播卡片自己的目标宠物 —— 取 `#anim-pet` 的值，缺省回落页面级「当前桌宠」。
+     * 为什么不能用 currentPet()：那个看的是 `S.petId`（顶部「当前桌宠」），
+     * 而点播卡片有**自己的**宠物下拉；两者不一致时列表会列出别只宠物的名字，
+     * 点了必然 unknown-animation（池是按条目分的，主宠物与 pet pack 完全不同）。
+     */
+    function animPet() {
+      const sel = $("anim-pet");
+      const id = (sel && sel.value) || S.petId;
+      return S.pets.find((p) => p.id === id) || null;
+    }
+
+    /** 点播卡片目标宠物所属条目的动画池（用于点播下拉框） */
+    function currentAnimations() {
+      const p = animPet();
+      const entry = p && S.cfg ? S.cfg[p.entry] : null;
+      return entry && entry.animations ? entry.animations : null;
+    }
+
+    /** 填充点播动画下拉框（宠物切换/配置重载后都要刷新） */
+    function fillAnimSelect() {
+      const sel = $("anim-name");
+      if (!sel) return;
+      const names = animationNamesOf(currentAnimations());
+      const prev = sel.value;
+      sel.innerHTML = "";
+      for (const n of names) {
+        const o = el("option", null, n);
+        o.value = n;
+        sel.appendChild(o);
+      }
+      if (!names.length) {
+        const o = el("option", null, "（该宠物没有可点播的动画）");
+        o.value = "";
+        sel.appendChild(o);
+      }
+      if (prev && names.includes(prev)) sel.value = prev;
+    }
+
+    // 点播动画：以"外部插件"的身份让桌宠播一段。两种形态二选一（与宿主同一套 XOR）：
+    //   名字 → 走菜单语义（镜像修正 / 真实位移），效果与右键「动作」一致；
+    //   地址 → 第三方自带的素材，直接换源播一次，不走菜单语义（issue #122 第 1 条）。
+    $("anim-play").addEventListener("click", async () => {
+      const petId = $("anim-pet").value || S.petId;
+      const mode = $("anim-mode").value;
+      const res = $("anim-result");
+      // 按来源下拉决定发 name 还是 url——**绝不两个都发**（宿主会判 bad-request）
+      const body = mode === "url" ? { url: $("anim-url").value.trim() } : { name: $("anim-name").value };
+      if (!body.url && !body.name) {
+        res.textContent = mode === "url" ? "请填一个动画地址" : "该宠物没有可点播的动画";
+        return;
+      }
+      // 朝向（可选）：空值 = 不指定，**连字段都不发**——宿主据此区分"没要求"与"要求 left"
+      const facing = $("anim-facing").value;
+      if (facing) body.facing = facing;
+      stopPlaybackWatch("重新点播"); // 新的一次点播：先停掉上一次的回执轮询
+      res.textContent = "点播中…";
+      const r = await POST("/anim" + actQuery(petId), { body });
+      if (r.status === 200 && r.body && r.body.ok) {
+        // 回执编号：宿主受理时生成。老版本 host 不回这个字段 → 回执不可用，明确提示（不静默）
+        const pid = typeof r.body.playbackId === "string" ? r.body.playbackId : "";
+        if (pid) {
+          res.textContent = "已点播 · " + r.ms + "ms · playbackId=" + pid;
+          startPlaybackWatch(pid);
+        } else {
+          res.textContent = "已点播 · " + r.ms + "ms（宿主未返回 playbackId —— 回执接口不可用，需先 npm run build）";
+          $("pb-start").disabled = true;
+        }
+        // 动作端点不回数据：立刻补拉一拍，让状态位里的 anim counter 及时反映出来
+        await poll();
+      } else {
+        res.textContent = "被拒：" + whyOf(r);
+      }
+    });
+
+    /**
+     * 原生 <input type="file"> 长什么样由浏览器定，跟本页风格完全不搭 —— 藏起来，
+     * 用一个页面自己的 .btn 触发它，并把选中的文件名回填到按钮上（太长就截断）。
+     */
+    function bindFilePicker(inputId, btnId, emptyLabel, prefix) {
+      const input = $(inputId);
+      const btn = $(btnId);
+      btn.addEventListener("click", () => input.click());
+      input.addEventListener("change", () => {
+        const f = input.files && input.files[0];
+        if (!f) {
+          btn.textContent = emptyLabel;
+          btn.title = "";
+          return;
+        }
+        btn.textContent = prefix + (f.name.length > 16 ? f.name.slice(0, 15) + "…" : f.name);
+        btn.title = f.name;
+      });
+    }
+
+    /**
+     * 把一个文件交给**测试代理自己的** /__upload 收下，拿回一个可访问的地址。
+     * 动画与配图两个卡片共用这一条 —— 服务端本来就是通用的（按扩展名定 MIME）。
+     * 上传落在系统临时目录、回读走 /__uploads/，两者都在 dsh-pet 接口前缀之外，宿主全程不参与。
+     */
+    async function uploadToTester(file) {
+      const upPath = "/__upload?name=" + encodeURIComponent(file.name);
+      const t0 = performance.now();
+      try {
+        // 直接发 File 本体（不套 multipart）：代理那边就是"请求体 = 原始字节"
+        const r = await fetch(upPath, {
+          method: "POST",
+          headers: { "content-type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        const ms = Math.round(performance.now() - t0);
+        const j = await r.json().catch(() => null);
+        logActivity("POST", upPath, { status: r.status, ms, error: r.ok ? "" : (j && j.error) || "" });
+        if (!r.ok || !j || !j.ok) return { error: (j && j.error) || "HTTP " + r.status };
+        return { url: j.url, bytes: j.bytes };
+      } catch (e) {
+        return { error: e && e.message ? e.message : String(e) };
+      }
+    }
+
+    bindFilePicker("anim-file", "anim-file-btn", "选择视频", "视频：");
+    bindFilePicker("bc-file", "bc-file-btn", "选择图片", "图片：");
+
+    // 上传视频 → 拿回地址 → 填进 url 字段 → 回读预览。
+    // 这就是"第三方自己托管素材、只给一个 url"的完整演示（issue #122 第 1 条那条路）。
+    $("anim-upload").addEventListener("click", async () => {
+      const file = $("anim-file").files && $("anim-file").files[0];
+      const res = $("anim-upload-result");
+      if (!file) {
+        res.textContent = "先选一个视频文件";
+        return;
+      }
+      res.textContent = "上传中…";
+      const up = await uploadToTester(file);
+      if (up.error) {
+        res.textContent = "上传失败：" + up.error;
+        return;
+      }
+      $("anim-url").value = up.url;
+      res.textContent = "已上传 " + Math.max(1, Math.round(up.bytes / 1024)) + " KB → " + up.url;
+      // 回读预览：让浏览器从**那个地址**再取一次，确认服务真的能访问到这个视频
+      const pv = $("anim-preview");
+      pv.src = up.url;
+      pv.load();
+      $("anim-upload-preview-row").style.display = "";
+    });
+
+    // 上传图片 → 同一条路（配图也能"自己托管"）。填进 #bc-url，投喂时走 /broadcast 的 url 参数。
+    $("bc-upload").addEventListener("click", async () => {
+      const file = $("bc-file").files && $("bc-file").files[0];
+      const res = $("bc-upload-result");
+      if (!file) {
+        res.textContent = "先选一个图片文件";
+        return;
+      }
+      res.textContent = "上传中…";
+      const up = await uploadToTester(file);
+      if (up.error) {
+        res.textContent = "上传失败：" + up.error;
+        return;
+      }
+      $("bc-url").value = up.url;
+      res.textContent = "已上传 " + Math.max(1, Math.round(up.bytes / 1024)) + " KB → " + up.url;
+    });
+
+    // ── 播放回执轮询（issue #122 第 3 项）────────────────────────────────
+    // 勾选框 = 要等的状态名单（→ 接口的 wait=），轮询时间 = 每次最多挂多久（→ timeout=）。
+    // 命中名单里的状态就停；没命中就回来立刻再发一次 —— 这就是长轮询的有效轮询间隔。
+    // 时间钳在 100–10000ms：0 会变成打服务器的热循环，接口允许但这里不给用。
+    let lastPlaybackId = "";
+    let pbWatch = { timer: 0, round: 0, running: false };
+
+    function pbWaitList() {
+      return Array.from(document.querySelectorAll(".pb-wait"))
+        .filter((el) => el.checked)
+        .map((el) => el.value);
+    }
+
+    function pbAppend(line) {
+      const box = $("pb-log");
+      if (!box) return;
+      box.textContent += "[" + new Date().toTimeString().slice(0, 8) + "] " + line + "\n";
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function stopPlaybackWatch(why) {
+      if (pbWatch.timer) window.clearTimeout(pbWatch.timer);
+      const was = pbWatch.running;
+      pbWatch = { timer: 0, round: 0, running: false };
+      $("pb-stop").disabled = true;
+      if (was && why) $("pb-state").textContent = "已停止：" + why;
+    }
+
+    // ── 直观显示：状态阶梯 + 每轮一行 ──────────────────────────────
+    const PB_STAGES = ["accepted", "playing", "ended", "failed", "cancelled"];
+    const PB_COLOR = { ended: "#2e9e4f", failed: "#d94f3d", cancelled: "#c98a1a" };
+
+    /** 五个状态各一个 pill：当前状态填色高亮，其余淡显——一眼看出走到哪一步 */
+    function pbRenderStages(current) {
+      const box = $("pb-stages");
+      if (!box) return;
+      box.textContent = "";
+      for (const s of PB_STAGES) {
+        const color = PB_COLOR[s] || "#4D6BFE";
+        const on = s === current;
+        const pill = document.createElement("span");
+        pill.textContent = s;
+        pill.style.cssText =
+          "padding:3px 10px;border-radius:999px;font-size:12px;border:1px solid " + color + ";" +
+          (on ? "background:" + color + ";color:#fff;font-weight:600" : "color:" + color + ";opacity:.5");
+        box.appendChild(pill);
+      }
+    }
+
+    /** 每轮一行：轮次 / 等了多久 / 回来的状态 / 是否命中 / 原因 */
+    function pbAddRow(round, ms, status, matched, reason) {
+      const tb = $("pb-rows");
+      if (!tb) return;
+      const tr = document.createElement("tr");
+      for (const v of [round, ms === null ? "—" : ms + "ms", status, matched ? "✓" : "", reason || ""]) {
+        const td = document.createElement("td");
+        td.textContent = String(v);
+        td.style.cssText = "padding:3px 6px;border-top:1px solid rgba(128,128,128,.18)";
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+      const scroller = tb.closest("div");
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    /** 一轮：发一次 /playback/<id>?wait=&timeout=，结果画进阶梯与表格，原文丢进折叠区 */
+    async function pbRound(id) {
+      if (!pbWatch.running) return;
+      const wait = pbWaitList();
+      if (!wait.length) {
+        $("pb-state").textContent = "没有勾选任何等待状态 —— 请至少勾一个（否则永远等不到）";
+        stopPlaybackWatch("未勾选等待状态");
+        return;
+      }
+      const raw = Number($("pb-timeout").value) || 0;
+      const timeout = Math.max(100, Math.min(10000, raw));
+      const q =
+        "/playback/" + encodeURIComponent(id) +
+        "?wait=" + encodeURIComponent(wait.join(",")) +
+        "&timeout=" + timeout;
+      pbWatch.round += 1;
+      const round = pbWatch.round;
+      pbAppend("──────── 第 " + round + " 轮 ────────\nGET " + PREFIX + q);
+      const r = await GET(q);
+      if (!pbWatch.running) return; // 等待期间被停掉了：不再动 UI
+      pbAppend(
+        "HTTP " + r.status + " · " + r.ms + "ms" + (r.error ? " · " + r.error : "") + "\n" +
+          (r.text === undefined || r.text === "" ? "(空响应体)" : r.text),
+      );
+      const b = r.body;
+      if (!b || typeof b !== "object" || typeof b.status !== "string") {
+        // 宿主还没重载 / 编号失效：表格里也留一行，状态列直接写 HTTP 码，一眼看出"路由没通"
+        pbAddRow(round, r.ms, "HTTP " + r.status + "（非 JSON）", false, "");
+        $("pb-state").textContent = "返回里没有 status —— 宿主可能还没重载（展开下面原始文本确认）";
+        stopPlaybackWatch("返回不可识别");
+        return;
+      }
+      pbRenderStages(b.status);
+      pbAddRow(round, r.ms, b.status, b.matched, b.reason);
+      if (b.matched) {
+        stopPlaybackWatch("");
+        $("pb-state").textContent = "已命中 " + b.status + "（第 " + round + " 轮）";
+        return;
+      }
+      $("pb-state").textContent = "第 " + round + " 轮等到了 " + b.status + "，没命中等待名单 → 继续等";
+      pbWatch.timer = window.setTimeout(() => void pbRound(id), 0);
+    }
+
+    function startPlaybackWatch(id) {
+      stopPlaybackWatch("");
+      lastPlaybackId = id;
+      pbWatch = { timer: 0, round: 0, running: true };
+      $("pb-start").disabled = false;
+      $("pb-stop").disabled = false;
+      $("pb-log").textContent = "";
+      $("pb-rows").textContent = "";
+      pbRenderStages(""); // 阶梯清空：还没有任何状态
+      pbAppend(
+        "开始轮询 " + id + " · wait=" + (pbWaitList().join(",") || "(空)") +
+          " · timeout=" + $("pb-timeout").value + "ms",
+      );
+      void pbRound(id);
+    }
+
+    $("pb-start").addEventListener("click", () => {
+      if (lastPlaybackId) startPlaybackWatch(lastPlaybackId);
+      else $("pb-state").textContent = "先点「播放」拿到 playbackId";
+    });
+    $("pb-stop").addEventListener("click", () => stopPlaybackWatch("手动停止"));
+    window.addEventListener("beforeunload", () => stopPlaybackWatch(""));
+
+    // ═══════════════════════════════════════════════════════════════
+    // 位置与抛掷（issue #122 第 6 项）
+    // ═══════════════════════════════════════════════════════════════
+    // 两条都是**运动指令**：本页只把参数送出去，运动学全在宿主与渲染端
+    // （位置 = 拖拽跟手那套弹簧；抛掷 = 既有的 startThrow）。
+    // 下面唯一"复制"的一处是初速换算——只为把文档里那张表实时算给用户看。
+
+    const THROW_SPEED_ANCHOR = 1200;
+    const MAX_THROW_SPEED = 3600;
+    /** 与宿主 shared/physics.ts 的 softClampSpeed 同一公式（只用于显示，不参与控制） */
+    const softClampSpeed = (v) => (v <= 0 ? 0 : MAX_THROW_SPEED * (1 - Math.exp(-v / MAX_THROW_SPEED)));
+
+    /** 本卡片自己的目标宠物（它有自己的下拉框，与顶部「当前桌宠」可以不一致） */
+    function mvPet() {
+      const sel = $("mv-pet");
+      const id = (sel && sel.value) || S.petId;
+      return S.pets.find((p) => p.id === id) || null;
+    }
+
+    /**
+     * 读当前输入的目标坐标。**故意不夹取**：允许填越界值，好让用户亲眼看到
+     * "宿主会夹到 0~1、响应里回的是夹取后的值"这件事。
+     */
+    function mvTarget() {
+      const x = Number($("mv-x").value);
+      const y = Number($("mv-y").value);
+      return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 };
+    }
+
+    /** 把目标点画进预览框（越界值夹到框内显示，并在旁边说明） */
+    function mvRender() {
+      const { x, y } = mvTarget();
+      const cx = Math.max(0, Math.min(1, x));
+      const cy = Math.max(0, Math.min(1, y));
+      const dot = $("mv-dot");
+      dot.style.left = cx * 100 + "%";
+      dot.style.top = cy * 100 + "%";
+      const out = x < 0 || x > 1 || y < 0 || y > 1;
+      $("mv-note").textContent = out ? "越界了（合法 0~1）——宿主会夹到边界" : "";
+      $("mv-note").style.color = out ? "var(--warn)" : "";
+      const p = mvPet();
+      $("mv-hint").textContent = p ? "条目 " + p.entry : "";
+    }
+
+    /** 指针位置 → 归一化坐标（预览框内的比例，夹到框内） */
+    function mvStagePoint(e) {
+      const box = $("mv-stage").getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)),
+        y: Math.max(0, Math.min(1, (e.clientY - box.top) / box.height)),
+      };
+    }
+
+    (function bindStage() {
+      const stage = $("mv-stage");
+      let down = false;
+      const apply = (e) => {
+        const p = mvStagePoint(e);
+        $("mv-x").value = p.x.toFixed(3);
+        $("mv-y").value = p.y.toFixed(3);
+        mvRender();
+      };
+      stage.addEventListener("pointerdown", (e) => {
+        down = true;
+        try { stage.setPointerCapture(e.pointerId); } catch { /* 捕获失败不影响拖动 */ }
+        apply(e);
+      });
+      stage.addEventListener("pointermove", (e) => { if (down) apply(e); });
+      stage.addEventListener("pointerup", (e) => {
+        down = false;
+        try { stage.releasePointerCapture(e.pointerId); } catch { /* 已释放 */ }
+      });
+      stage.addEventListener("pointercancel", () => { down = false; });
+    })();
+
+    /**
+     * 读实况（**桌面端**）：`GET /pose` —— 把宠物**实际**中心画进预览框（绿箭头，箭头方向 = 朝向）。
+     *
+     * **不要求 `surface`**：它是读端点（同 GET /chat、GET /playback），surface 只加在会产生渲染端
+     * 可见效果的动作端点上。
+     *
+     * **网页端没有这条路**：它的位置天生每个页面一份（两个标签页本来就不同），走页面内的 Cordis
+     * 只读服务 `ctx.get('petApi7340').pose(petId)`——字段与坐标口径完全一致，只是"取"的方式不同。
+     */
+    $("mv-pose").addEventListener("click", () => {
+      void mvReadPose(false);
+    });
+
+    // 进页面自动读一次（**失败静默**：保留默认提示，不把"还没起来"刷成一行红字）——
+    // 否则绿箭头默认隐藏，用户根本不知道有这个标记
+    window.setTimeout(() => {
+      void mvReadPose(true);
+    }, 900);
+
+    async function mvReadPose(silent) {
+      const petId = $("mv-pet").value || S.petId;
+      const res = $("mv-pose-result");
+      const marker = $("mv-actual");
+      // silent 时**完全不碰这句提示**（保留 HTML 里的 mono 标记，也不把"还没起来"刷成红字）
+      if (!silent) res.textContent = "读取中…";
+      const r = await GET("/pose?pet=" + encodeURIComponent(petId));
+      if (!(r.body && r.body.ok)) {
+        marker.style.display = "none";
+        if (!silent) res.textContent = "被拒：" + whyOf(r) + "（网页端请用 Cordis 服务 petApi7340）";
+        return;
+      }
+      // 夹到框内只是**显示**需要：宠物贴边拖出时中心点可能略出 0~1，接口本身不夹取
+      marker.style.left = Math.max(0, Math.min(1, Number(r.body.x))) * 100 + "%";
+      marker.style.top = Math.max(0, Math.min(1, Number(r.body.y))) * 100 + "%";
+      marker.textContent = r.body.facing === "right" ? "▶" : "◀";
+      // 必须写 "block"：`.stage-actual` 的 `display:none` 写在 CSS 里，置空字符串会**回落**到它，
+      // 于是又藏起来（这是踩过的坑）
+      marker.style.display = "block";
+      const age = Math.max(0, Date.now() - Number(r.body.updatedAt));
+      res.textContent =
+        "x=" +
+        Number(r.body.x).toFixed(3) +
+        " y=" +
+        Number(r.body.y).toFixed(3) +
+        " facing=" +
+        r.body.facing +
+        " · " +
+        age +
+        "ms 前上报";
+    }
+
+    // ── 抛掷：角度拨盘 + 力度 ────────────────────────────────────────
+
+    function thValues() {
+      const a = Number($("th-angle").value);
+      const p = Number($("th-power").value);
+      return { angle: Number.isFinite(a) ? a : 0, power: Number.isFinite(p) && p > 0 ? p : 0.1 };
+    }
+
+    /** 拨盘指针 + 实时读数（力度 → 实际初速用与宿主同一公式算） */
+    function thRender() {
+      const { angle, power } = thValues();
+      // 屏幕坐标 y 向下，而接口约定逆时针为正 → CSS rotate 取负号
+      $("th-arrow").style.transform = "rotate(" + -angle + "deg)";
+      const rad = (angle * Math.PI) / 180;
+      const speed = softClampSpeed(power * THROW_SPEED_ANCHOR);
+      const vx = Math.cos(rad) * speed;
+      const vy = -Math.sin(rad) * speed;
+      $("th-readout").textContent =
+        "实际初速 " + speed.toFixed(0) + " px/s（软上限前 " + (power * THROW_SPEED_ANCHOR).toFixed(0) +
+        "，上限 " + MAX_THROW_SPEED + "）" +
+        "　vx " + vx.toFixed(0) + " / vy " + vy.toFixed(0) +
+        (angle === 90 ? "　← 正上" : angle === -90 ? "　← 正下" : angle === 0 ? "　← 正右" : angle === 180 ? "　← 正左" : "");
+    }
+
+    /** 指针位置 → 角度（0 = 正右、逆时针为正，与接口同一约定） */
+    function thSetFromPointer(e) {
+      const box = $("th-dial").getBoundingClientRect();
+      const dx = e.clientX - (box.left + box.width / 2);
+      const dy = e.clientY - (box.top + box.height / 2);
+      let deg = (Math.atan2(-dy, dx) * 180) / Math.PI;
+      if (deg <= -180) deg += 360;
+      $("th-angle").value = String(Math.round(deg));
+      thRender();
+    }
+
+    (function bindDial() {
+      const dial = $("th-dial");
+      let down = false;
+      dial.addEventListener("pointerdown", (e) => {
+        down = true;
+        try { dial.setPointerCapture(e.pointerId); } catch { /* 捕获失败不影响拖动 */ }
+        thSetFromPointer(e);
+      });
+      dial.addEventListener("pointermove", (e) => { if (down) thSetFromPointer(e); });
+      dial.addEventListener("pointerup", (e) => {
+        down = false;
+        try { dial.releasePointerCapture(e.pointerId); } catch { /* 已释放 */ }
+      });
+      dial.addEventListener("pointercancel", () => { down = false; });
+    })();
+
+    /** 发一条位置指令。mode 三选一；只有 line 模式带 duration（其余模式宿主不看它） */
+    async function mvGo(mode, duration) {
+      const petId = $("mv-pet").value || S.petId;
+      const { x, y } = mvTarget();
+      const res = $("mv-result");
+      res.textContent = "发送中…";
+      const body = mode === "line" ? { x, y, mode, duration } : { x, y, mode };
+      const r = await POST("/position" + actQuery(petId), { body });
+      if (r.status === 200 && r.body && r.body.ok) {
+        const ax = Number(r.body.x);
+        const ay = Number(r.body.y);
+        const clamped = Math.abs(ax - x) > 1e-9 || Math.abs(ay - y) > 1e-9;
+        res.textContent =
+          "已受理 · " + r.ms + "ms · 实际生效 x=" + ax + " y=" + ay +
+          (clamped ? "（传的值被夹取了）" : "");
+        // 回填实际生效值：让"夹取"这件事在界面上留下痕迹，而不是只闪一句提示
+        $("mv-x").value = ax;
+        $("mv-y").value = ay;
+        mvRender();
+        await poll(); // 动作端点不回数据：立刻补拉一拍，让叶子表反映出来
+      } else {
+        res.textContent = "被拒：" + whyOf(r);
+      }
+    }
+
+    $("mv-go").addEventListener("click", () => void mvGo($("mv-mode").value, Number($("mv-duration").value)));
+    $("mv-snap").addEventListener("click", () => void mvGo("instant"));
+    $("mv-x").addEventListener("input", mvRender);
+    $("mv-y").addEventListener("input", mvRender);
+    $("mv-pet").addEventListener("change", mvRender);
+
+    $("th-go").addEventListener("click", async () => {
+      const petId = $("mv-pet").value || S.petId;
+      const { angle, power } = thValues();
+      const res = $("th-result");
+      res.textContent = "发送中…";
+      const r = await POST("/throw" + actQuery(petId), { body: { angle, power } });
+      if (r.status === 200 && r.body && r.body.ok) {
+        res.textContent = "已受理 · " + r.ms + "ms（宠物从当前位置起飞）";
+        await poll();
+      } else {
+        res.textContent = "被拒：" + whyOf(r);
+      }
+    });
+
+    // 角度数字框 ↔ 拨盘、力度滑块 ↔ 数字框，双向同步
+    $("th-angle").addEventListener("input", thRender);
+    $("th-power").addEventListener("input", () => {
+      $("th-power-num").value = $("th-power").value;
+      thRender();
+    });
+    $("th-power-num").addEventListener("input", () => {
+      const v = Number($("th-power-num").value);
+      if (Number.isFinite(v) && v > 0) $("th-power").value = String(Math.min(6, v));
+      thRender();
+    });
+
+    mvRender();
+    thRender();
+
+    // ═══════════════════════════════════════════════════════════════
+    // 占用锁（issue #122 第 4 项）：取锁 / 续期 / 释放
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * 动作端点的查询串：`?pet=<id>`，**本页持锁且锁就是这只宠物时**再补一个 `&lock=`。
+     *
+     * 占用期间那几个接口必须带 lock，否则回 lock-required；**没有锁时**不传它照旧放行，而传了
+     * 一个查不到的编号会回 lock-lost（说明你以为自己还持有），所以"没锁就不加"是对的。锁按宠物
+     * 分：拿着 main 的锁去操作 pet-2 时不该带它（那份锁对 pet-2 无效）。
+     */
+    function actQuery(petId) {
+      let q = "?pet=" + encodeURIComponent(petId);
+      const lk = S.lock;
+      if (lk && lk.petId === petId && lk.lockId) q += "&lock=" + encodeURIComponent(lk.lockId);
+      q += "&surface=" + surfaceOf();
+      return q;
+    }
+
+    /**
+     * 页面级「显示端」→ `?surface=` 的取值（**必填**，issue #122 第 1 条）。
+     * 动作接口拿它跟宠物的 display 对一下：对不上就回 pet-not-displayed + 实际 display，
+     * 而不是默默受理、然后什么也不发生（见 src/host/surface.ts）。
+     * 默认 any = 哪端都行（只要不是 display:none），与"不校验"最接近但仍会拒掉不显示的宠物。
+     */
+    function surfaceOf() {
+      const el = $("surface-select");
+      return (el && el.value) || "any";
+    }
+
+    /**
+     * 失败原因串。比原来多带上 `cause`：占用锁的两个新错误码要靠它才分得清
+     * （lock-required = 没带；lock-lost = 带了但编号不作数，cause 说明是过期 / 已释放 / 被用户抢走）。
+     */
+    function whyOf(r) {
+      const b = r.body || {};
+      const parts = [];
+      if (b.reason) parts.push(b.reason);
+      if (b.cause) parts.push("cause=" + b.cause);
+      if (b.message) parts.push(b.message);
+      return parts.length ? parts.join(" · ") : (r.error || "HTTP " + r.status);
+    }
+
+    /**
+     * 用 /state 里的**真实**占用校正本页手里的锁。两个方向都要管：
+     *   - 手里有、叶子里没了（过期 / 被释放 / 被用户抢走）→ 把手里的丢掉并说一声；
+     *   - 手里没有、叶子里有（比如刚刷新过页面）→ 卡片上得看得见，否则宠物一直僵着没人知道为什么。
+     */
+    function syncLock(s) {
+      const pets = (s && s.pets) || {};
+      const lk = S.lock;
+      if (lk) {
+        const data = pets[lk.petId] && pets[lk.petId].lock && pets[lk.petId].lock.data;
+        if (data && data.locked === true && typeof data.expiresAt === "number") {
+          lk.expiresAt = data.expiresAt; // 以叶子为准（续期之后这里也跟着走）
+        } else {
+          S.lock = null;
+          $("lk-result").textContent = "锁没了（过期 / 已释放 / 被用户接管）";
+        }
+      }
+      const want = $("lk-pet").value || S.petId;
+      const d = pets[want] && pets[want].lock && pets[want].lock.data;
+      S.lockLeaf =
+        d && d.locked === true && typeof d.expiresAt === "number"
+          ? { petId: want, expiresAt: d.expiresAt }
+          : null;
+    }
+
+    /** 占用锁卡片：本页手里的锁 + 剩余时间（poll 每秒调一次，所以倒计时是走字的） */
+    function renderLock() {
+      const idBox = $("lk-id");
+      const remBox = $("lk-remain");
+      const hint = $("lk-hint");
+      const lk = S.lock;
+      if (lk) {
+        const left = lk.expiresAt - Date.now();
+        idBox.textContent = lk.lockId + " @ " + lk.petId;
+        if (left > 0) {
+          remBox.textContent = "剩余 " + (left / 1000).toFixed(1) + "s";
+          hint.textContent = "";
+        } else {
+          // 宿主那侧是**懒判过期**：本地也别再带着一个死编号去调接口（带了只会回 lock-lost）
+          remBox.textContent = "已过期";
+          hint.textContent = "已过期——要接着占用就点「续期」，重新拿一把就点「取锁」";
+          S.lock = null;
+        }
+        return;
+      }
+      idBox.textContent = "（没有）";
+      if (S.lockLeaf) {
+        const left = S.lockLeaf.expiresAt - Date.now();
+        remBox.textContent = left > 0 ? "被占用 · 剩余 " + (left / 1000).toFixed(1) + "s" : "被占用 · 已过期";
+        hint.textContent =
+          "这只宠物正被占用（可能就是本页刷新前留下的那把锁）。拿不到编号时，点「模拟用户接管」可以撤掉它。";
+        return;
+      }
+      remBox.textContent = "";
+      hint.textContent = "";
+    }
+
+    /** 锁操作的结果行（成功 / 被拒都走它；被拒时带上 reason + cause） */
+    function lockDone(okText, r) {
+      $("lk-result").textContent =
+        r.status === 200 && r.body && r.body.ok ? okText + " · " + r.ms + "ms" : "被拒：" + whyOf(r);
+    }
+
+    // 取锁：不带 lockId 就是新建。撞上 locked 时宿主会带回 expiresAt——告诉用户什么时候能重试
+    $("lk-acquire").addEventListener("click", async () => {
+      const petId = $("lk-pet").value || S.petId;
+      const ttl = Number($("lk-ttl").value);
+      $("lk-result").textContent = "取锁中…";
+      $("lk-hint").textContent = "";
+      const r = await POST("/lock?pet=" + encodeURIComponent(petId) + "&surface=" + surfaceOf(), {
+        body: Number.isFinite(ttl) ? { ttl } : {},
+      });
+      if (r.status === 200 && r.body && r.body.ok) {
+        S.lock = { petId: r.body.petId, lockId: r.body.lockId, expiresAt: r.body.expiresAt };
+        lockDone("已占用", r);
+      } else {
+        lockDone("", r);
+        const exp = r.body && r.body.expiresAt;
+        if (exp) $("lk-hint").textContent = "已被别人占用，到 " + new Date(exp).toLocaleTimeString() + " 才空出来";
+      }
+      await poll();
+    });
+
+    // 续期：**同一个端点**，给了 lockId 就是续期——这就是持锁者每隔几秒要做一次的心跳
+    $("lk-renew").addEventListener("click", async () => {
+      const lk = S.lock;
+      if (!lk) {
+        $("lk-result").textContent = "手里没有锁，先取锁";
+        return;
+      }
+      const ttl = Number($("lk-ttl").value);
+      $("lk-result").textContent = "续期中…";
+      const body = { lockId: lk.lockId };
+      if (Number.isFinite(ttl)) body.ttl = ttl;
+      const r = await POST("/lock?pet=" + encodeURIComponent(lk.petId) + "&surface=" + surfaceOf(), { body });
+      if (r.status === 200 && r.body && r.body.ok) {
+        S.lock = { petId: r.body.petId, lockId: r.body.lockId, expiresAt: r.body.expiresAt };
+        lockDone("已续期", r);
+      } else {
+        lockDone("", r);
+        S.lock = null; // lock-lost：手里的编号已经不作数了，别再带着它去调接口
+      }
+      await poll();
+    });
+
+    // 释放：幂等（本来就没有锁也回 ok）；但拿着**别人的**编号会被拒（lock-lost）
+    $("lk-release").addEventListener("click", async () => {
+      const lk = S.lock;
+      if (!lk) {
+        $("lk-result").textContent = "手里没有锁（释放是幂等的，无事可做）";
+        return;
+      }
+      $("lk-result").textContent = "释放中…";
+      const r = await POST("/lock/release?pet=" + encodeURIComponent(lk.petId), { body: { lockId: lk.lockId } });
+      if (r.status === 200 && r.body && r.body.ok) S.lock = null;
+      lockDone("已释放", r);
+      await poll();
+    });
+
+    // 用户接管：`force: true` 是**渲染端**在用户拖拽 / 点击时发的（第三方不用调）。
+    // 放这里是为了能亲手验证抢占那条路——尤其刷新页面之后手里没编号、宠物却还僵着的时候。
+    $("lk-force").addEventListener("click", async () => {
+      const petId = (S.lock && S.lock.petId) || $("lk-pet").value || S.petId;
+      $("lk-result").textContent = "接管中…";
+      const r = await POST("/lock/release?pet=" + encodeURIComponent(petId), { body: { force: true } });
+      if (r.status === 200 && r.body && r.body.ok) S.lock = null;
+      lockDone("已按用户接管撤锁", r);
+      await poll();
+    });
+
+    $("lk-pet").addEventListener("change", renderLock);
+
+    renderLock();
+
+    // 第三方投喂：以"外部插件"的身份把文本写进气泡（issue #76 的场景）
+    // 新参数（issue #122 第 5 条）：duration 毫秒（0 = 字面意思「不显示」）、anim 是否联动说话动画
+    // 配图（issue #122 第 1 条）：名称 / 地址**二选一**——按来源下拉决定发哪个，绝不两个都发
+    $("bc-send").addEventListener("click", async () => {
+      const petId = $("bc-pet").value || S.petId;
+      const text = $("bc-text").value;
+      const picMode = $("bc-pic-mode").value;
+      const duration = Number($("bc-duration").value);
+      const anim = $("bc-anim").checked;
+      const res = $("bc-result");
+      res.textContent = "投喂中…";
+      const body = { text };
+      if (picMode === "url") {
+        const url = $("bc-url").value.trim();
+        if (url) body.url = url;
+      } else {
+        const image = $("bc-image").value.trim();
+        if (image) body.image = image;
+      }
+      if (Number.isFinite(duration)) body.duration = duration;
+      body.anim = anim;
+      const r = await POST("/broadcast" + actQuery(petId), { body });
+      if (r.status === 200 && r.body && r.body.ok) {
+        res.textContent = "已投喂 · " + r.ms + "ms";
+        // 动作端点不回数据：立刻补拉一拍 /state，0 延迟看到气泡
+        const s = await GET("/state");
+        const leaf = s.body && s.body.pets && s.body.pets[petId] && s.body.pets[petId].say;
+        if (leaf) {
+          S.baseline["pets." + petId + ".say"] = leaf.counter;
+          if (petId === S.petId) renderSay(leaf.data, petId);
+        }
+      } else {
+        res.textContent = "被拒：" + whyOf(r);
+      }
+    });
+
+    // 清空气泡：POST /bubble/clear —— 提前撤回（issue #122 第 5 条）。无请求体。
+    $("bc-clear").addEventListener("click", async () => {
+      const petId = $("bc-pet").value || S.petId;
+      const res = $("bc-result");
+      res.textContent = "清空中…";
+      const r = await POST("/bubble/clear" + actQuery(petId));
+      if (r.status === 200 && r.body && r.body.ok) {
+        res.textContent = "已清空 · " + r.ms + "ms";
+        // 立刻补拉一拍：叶子里会是 { clear: true }
+        const s = await GET("/state");
+        const leaf = s.body && s.body.pets && s.body.pets[petId] && s.body.pets[petId].say;
+        if (leaf) {
+          S.baseline["pets." + petId + ".say"] = leaf.counter;
+          if (petId === S.petId) renderSay(leaf.data, petId);
+        }
+      } else {
+        res.textContent = "被拒：" + whyOf(r);
+      }
+    });
+
+    // 显示位置：第三方改单只宠物的 display（POST /pet-display —— 与两端右键菜单同一个接口）
+    $("disp-send").addEventListener("click", async () => {
+      const petId = $("disp-pet").value || S.petId;
+      const display = $("disp-value").value;
+      const res = $("disp-result");
+      res.textContent = "应用中…";
+      // 只需 id + display：写哪一层（主配置 / 文件宠物）由宿主按 id 反查，
+      // 不像保存配置那样需要回传整段 pets。
+      const r = await POST("/pet-display", { body: { id: petId, display } });
+      // 业务失败是 **200 + {ok:false, reason}**（缺 id / display 非法 / 宠物不存在 / 写盘失败）——
+      // 只看状态码会把失败体当成成品聚合喂给 loadPets。
+      if (r.status === 200 && !(r.body && r.body.ok === false)) {
+        res.textContent = "已应用 · " + r.ms + "ms（桌面端会按新配置重建窗口）";
+        S.cfg = r.body; // 响应体就是改动后的成品聚合，直接采用（与保存配置同一条路）
+        await loadPets();
+      } else {
+        res.textContent = "被拒：" + whyOf(r);
+      }
+    });
+
+    $("chat-send").addEventListener("click", () => void sendChat());
+    $("chat-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        void sendChat();
+      }
+    });
+    $("chat-reload").addEventListener("click", () => void loadChat());
+    $("chat-clear").addEventListener("click", () => {
+      S.chat = [];
+      renderChat();
+      toast("只是清空了显示，宿主的记忆还在", "ok");
+    });
+
+    $("pet-add").addEventListener("click", () => {
+      if (!draft) draft = [];
+      draft.push({
+        id: "pet" + (draft.length + 1),
+        name: "新桌宠",
+        size: 462,
+        display: "both",
+        balanceEnabled: false,
+        whisperEnabled: true,
+        workStatusEnabled: true,
+        fixedEnabled: false,
+        corner: "bottom-right",
+        marginX: 24,
+        marginY: 24,
+      });
+      renderSettingsPets();
+    });
+
+    $("cfg-save").addEventListener("click", () => void saveConfig());
+
+    $("cfg-refresh").addEventListener("click", async () => {
+      resetDrafts();
+      await loadPets();
+      renderSettingsPets();
+      toast("已重新读取", "ok");
+    });
+
+    $("cfg-reload").addEventListener("click", async () => {
+      if (!confirm("重启桌面端？桌面上的桌宠窗口会消失并重建。")) return;
+      const r = await POST("/reload");
+      toast(r.ok ? "已通知桌面端重载" : "重载请求失败", r.ok ? "ok" : "bad");
+    });
+
+    $("cfg-default").addEventListener("click", async () => {
+      if (!confirm("用内置默认配置整份覆盖你的用户配置文件？当前改动会全部丢失。")) return;
+      const r = await POST("/config");
+      if (r.status === 200) {
+        toast("已恢复默认", "ok");
+        resetDrafts();
+        await loadPets();
+        renderSettingsPets();
+      } else {
+        toast("恢复失败：" + ((r.body && r.body.error) || r.error || ("HTTP " + r.status)), "bad");
+      }
+    });
+
+    $("models-load").addEventListener("click", () => void loadModels());
+    $("meta-load").addEventListener("click", () => void loadMeta());
+
+    // ═══════════════════════════════════════════════════════════════
+    // 第三方菜单（/menu/*）：以外部插件身份收自己菜单项的点击
+    // ═══════════════════════════════════════════════════════════════
+
+    /** 本页扮演的第三方：owner 既是身份键，也是菜单里显示的一级分组名 */
+    const MN_OWNER = "测试";
+    /** 长轮询毫秒数（宿主上限 10s） */
+    const MN_WAIT = 10000;
+
+    let mnRunning = false;            // 事件轮询是否在跑
+    let mnRegistered = false;         // 本次页面生命周期内是否注册过
+    let mnChain = Promise.resolve();  // 串行队列：发射/漫游不并发，免得两种演出抢同一把锁
+
+    const mnSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const mnStatus = (t) => { $("mn-status").textContent = t; };
+
+    /** 注册两项。业务失败也是 HTTP 200，所以要判 body.ok（原因见 whyOf 里的 reason/message） */
+    async function mnRegister() {
+      const r = await POST("/menu/item", { body: { owner: MN_OWNER, labels: ["发射", "漫游"] } });
+      const ok = r.status === 200 && !!(r.body && r.body.ok);
+      mnRegistered = ok;
+      $("mn-result").textContent = ok
+        ? "已注册 · " + r.ms + "ms（右键桌宠 → 更多）"
+        : "失败：" + whyOf(r);
+      return ok;
+    }
+
+    /**
+     * 取占用锁。发射/漫游都算"演出"：不拿锁也能调（接口不拦），但宠物自己的随机动画随时会把
+     * 它抢走，效果看着就像没生效——所以先拿锁，演完再放。
+     */
+    async function mnLock(petId) {
+      if (S.lock && S.lock.petId === petId && S.lock.lockId) return true;
+      const r = await POST("/lock?pet=" + encodeURIComponent(petId) + "&surface=" + surfaceOf(), {
+        body: { ttl: 120000 },
+      });
+      if (!(r.status === 200 && r.body && r.body.ok)) {
+        $("mn-last").textContent = "取锁失败：" + whyOf(r);
+        return false;
+      }
+      S.lock = { petId: r.body.petId, lockId: r.body.lockId, expiresAt: r.body.expiresAt };
+      await poll();
+      return true;
+    }
+
+    /** 放开本页手里的锁（别人拿着的锁不碰） */
+    async function mnUnlock() {
+      const lk = S.lock;
+      if (!lk) return;
+      await POST("/lock/release?pet=" + encodeURIComponent(lk.petId), { body: { lockId: lk.lockId } });
+      S.lock = null;
+      await poll();
+    }
+
+    /** 发射：随机方向 + 随机力度 */
+    async function mnThrow(petId) {
+      if (!(await mnLock(petId))) return;
+      const angle = Math.round(Math.random() * 140 - 70);            // -70° ~ 70°
+      const power = Number((0.6 + Math.random() * 1.2).toFixed(2));  // 0.6 ~ 1.8 倍
+      const r = await POST("/throw" + actQuery(petId), { body: { angle, power } });
+      $("mn-last").textContent =
+        r.status === 200 && r.body && r.body.ok
+          ? "发射 · " + petId + " · " + angle + "° / " + power + "× · " + r.ms + "ms"
+          : "发射被拒：" + whyOf(r);
+      await mnSleep(2500); // 等它飞完落地再放锁，否则半空解冻会被随机动画接走
+      await mnUnlock();
+    }
+
+    /** 漫游：连发几次 position，让宠物沿直线走过去 */
+    async function mnRoam(petId) {
+      if (!(await mnLock(petId))) return;
+      for (let i = 0; i < 4; i++) {
+        const x = Number((0.15 + Math.random() * 0.7).toFixed(3));
+        const y = Number((0.2 + Math.random() * 0.55).toFixed(3));
+        const r = await POST("/position" + actQuery(petId), { body: { x, y, mode: "line", duration: 1200 } });
+        if (!(r.status === 200 && r.body && r.body.ok)) {
+          $("mn-last").textContent = "漫游被拒：" + whyOf(r);
+          break;
+        }
+        $("mn-last").textContent = "漫游 · " + petId + " → (" + x + ", " + y + ")";
+        await mnSleep(1300);
+      }
+      await mnUnlock();
+    }
+
+    /** 事件分发：宿主只说"哪一项被点了、在哪只宠物上"，动作由本页替它调 */
+    function mnDispatch(events) {
+      for (const label of Object.keys(events || {})) {
+        const petId = events[label];
+        if (!petId) continue; // null = 没被点过
+        $("mn-last").textContent = label + " · " + petId;
+        mnChain = mnChain.then(() => (label === "发射" ? mnThrow(petId) : mnRoam(petId))).catch(() => {});
+      }
+    }
+
+    /** 长轮询循环：读到即消费；unknown-owner = 宿主重启过（注册表是内存态），重新注册再来 */
+    async function mnLoop() {
+      if (mnRunning) return;
+      mnRunning = true;
+      mnStatus("轮询中…");
+      while (mnRunning) {
+        const r = await GET("/menu/events?owner=" + encodeURIComponent(MN_OWNER) + "&wait=" + MN_WAIT);
+        if (!mnRunning) break;
+        const body = (r.body || {});
+        if (r.status === 200 && body.ok === false && body.reason === "unknown-owner") {
+          mnRegistered = false;
+          mnStatus("owner 不存在（宿主重启过），重新注册…");
+          if (await mnRegister()) mnStatus("轮询中…");
+          else { mnRunning = false; break; }
+          continue;
+        }
+        if (r.status !== 200 || body.ok !== true) {
+          mnStatus("查询失败：" + whyOf(r));
+          await mnSleep(1500);
+          continue;
+        }
+        mnStatus("轮询中… " + new Date().toLocaleTimeString());
+        mnDispatch(body.events);
+      }
+      mnStatus("已停止");
+    }
+
+    async function mnEnter() {
+      if (!mnRegistered) await mnRegister();
+      if (!mnRunning) void mnLoop();
+    }
+
+    $("mn-register").addEventListener("click", async () => {
+      $("mn-result").textContent = "注册中…";
+      await mnRegister();
+      await poll();
+    });
+    $("mn-clear").addEventListener("click", async () => {
+      // 先停轮询：否则清掉之后循环会当成「宿主重启过」，立刻又自动注册回来
+      mnRunning = false;
+      mnRegistered = false;
+      const r = await api("DELETE", "/menu/item?owner=" + encodeURIComponent(MN_OWNER));
+      const ok = r.status === 200 && !!(r.body && r.body.ok);
+      $("mn-result").textContent = ok ? "已清除 " + r.body.removed + " 项" : "清除失败：" + whyOf(r);
+      mnStatus("已停止");
+      await poll();
+    });
+    $("mn-start").addEventListener("click", () => { if (!mnRunning) void mnLoop(); });
+    $("mn-stop").addEventListener("click", () => { mnRunning = false; mnStatus("已停止"); });
+
+    // ═══════════════════════════════════════════════════════════════
+    // 任务状态（/work-status）：自定义输入 + 完整任务流
+    // ═══════════════════════════════════════════════════════════════
+
+    let wsFlowRunning = false;
+    let wsFlowToken = 0;
+    const wsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const wsErr = (r) => (r.body && r.body.error) || whyOf(r);
+
+    function wsLog(line) {
+      const box = $("ws-flow-log");
+      if (!box) return;
+      if (box.textContent === "等待开始…") box.textContent = "";
+      box.textContent += line + "\n";
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function wsWrite(state, task, omitTask = false) {
+      const body = omitTask ? { state } : { state, task };
+      return POST("/work-status", { body });
+    }
+
+    $("ws-send").addEventListener("click", async () => {
+      const omit = $("ws-task-keep").checked;
+      $("ws-result").textContent = "写入中…";
+      const r = await wsWrite($("ws-state").value, $("ws-task").value, omit);
+      const ok = r.status === 200 && r.body && r.body.state;
+      $("ws-result").textContent = ok
+        ? "已写入 " + r.body.state + (r.body.task ? " · " + r.body.task : "") + " · " + r.ms + "ms"
+        : "失败：" + wsErr(r);
+      await poll();
+    });
+
+    $("ws-clear").addEventListener("click", async () => {
+      $("ws-result").textContent = "清空中…";
+      const r = await api("DELETE", "/work-status");
+      $("ws-result").textContent = r.status === 204 ? "已清空（204）" : "失败：" + wsErr(r);
+      await poll();
+    });
+
+    const WS_FLOW = [
+      ["thinking", "理解任务…"],
+      ["working", "执行工具调用…"],
+      ["result", "整理工具结果…"],
+      ["success", "任务完成"],
+    ];
+
+    async function wsRunFlow() {
+      if (wsFlowRunning) return;
+      wsFlowRunning = true;
+      const token = ++wsFlowToken;
+      const gap = Math.max(200, Math.min(5000, Number($("ws-flow-gap").value) || 1200));
+      $("ws-flow-log").textContent = "";
+      $("ws-flow-status").textContent = "运行中…";
+      try {
+        for (const [state, task] of WS_FLOW) {
+          if (!wsFlowRunning || token !== wsFlowToken) break;
+          const r = await wsWrite(state, task);
+          const ok = r.status === 200 && r.body && r.body.state;
+          wsLog(hhmmss(Date.now()) + "  " + state.padEnd(9) + "  " + (ok ? "200" : "失败 " + wsErr(r)) + "  · " + task);
+          $("ws-flow-status").textContent = state + " · " + r.ms + "ms";
+          await poll();
+          if (!ok) break;
+          await wsSleep(gap);
+        }
+        if (token === wsFlowToken) {
+          wsFlowRunning = false;
+          $("ws-flow-status").textContent = "已完成（success 保留，需手动清空）";
+        }
+      } catch (e) {
+        wsFlowRunning = false;
+        wsLog("异常：" + e.message);
+        $("ws-flow-status").textContent = "异常停止";
+      }
+    }
+
+    $("ws-flow-start").addEventListener("click", () => void wsRunFlow());
+    $("ws-flow-stop").addEventListener("click", () => {
+      if (!wsFlowRunning) return;
+      wsFlowRunning = false;
+      wsFlowToken += 1;
+      $("ws-flow-status").textContent = "已停止";
+      wsLog("— 手动停止 —");
+    });
+    $("ws-flow-clear").addEventListener("click", async () => {
+      wsFlowRunning = false;
+      wsFlowToken += 1;
+      $("ws-flow-log").textContent = "";
+      const r = await api("DELETE", "/work-status");
+      $("ws-flow-status").textContent = r.status === 204 ? "已清空" : "清空失败：" + wsErr(r);
+      await poll();
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // 启动
+    // ═══════════════════════════════════════════════════════════════
+
+    (async () => {
+      renderActivity();
+      // 代理会把当前转发的端口告诉我们（直连模式没有这个端点，忽略即可）
+      try {
+        const res = await fetch("/__target", { cache: "no-store" });
+        const info = await res.json();
+        if (info && info.port) { S.port = info.port; $("port").value = info.port; }
+      } catch { /* 没有代理 */ }
+
+      await poll();
+      // 每秒轮询：整页唯一的数据来源
+      S.timers.poll = setInterval(() => { void poll(); }, POLL_MS);
+      // 余额/通知的时间显示每 30 秒刷新一次
+      S.timers.age = setInterval(() => {
+        if (S.sayAt) $("say-time").textContent = hhmmss(S.sayAt);
+      }, 30000);
+    })();
+  </script>
+</body>
+
+</html>

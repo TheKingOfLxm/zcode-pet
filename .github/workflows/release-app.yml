@@ -1,0 +1,160 @@
+# ============================================================================
+# 桌宠应用发版流水线（Windows x64）
+#
+# 职责只有一件事：**构建，并把 zip 挂到「该 tag 已经存在的 Release」上**。
+# 更新日志由人写（在 GitHub 网页上发布 Release 时填），本流水线不创建 Release、
+# 也不改 Release 正文——只用 `gh release upload --clobber` 传资产，避免把人工写好的
+# 日志覆盖成模板。
+#
+# 触发：
+#   ① push tag v*        —— 推 v0.3.9 / 或在网页发布带新 tag 的 Release 时触发
+#   ② workflow_dispatch  —— 手动输入 tag，重跑构建并重挂资产（检出该 tag 的代码）
+#
+# 产物：dsh-pet-win-x64.zip（固定名，内含 dsh-pet-<版本>-win-x64/ 目录）
+#   固定名是为了让 releases/latest/download/dsh-pet-win-x64.zip 这条永久链接成立。
+#
+# 前置：该 tag 的 Release 必须已经存在，否则第「确认 Release」步会失败并给出提示。
+# 权限：只需要内置 GITHUB_TOKEN 的 contents: write，不需要配置任何 secret。
+# ============================================================================
+
+name: release-app
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要构建并挂载的 tag（例如 v0.3.9）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-app-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  # 标签页推送时 ref_name 就是 tag 名；手动触发时用输入值
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        # 包在 dsh-pet/ 子目录：所有 run 步骤默认在那里执行
+        working-directory: dsh-pet
+
+    steps:
+      - name: 检出目标 tag 的代码
+        uses: actions/checkout@v4
+        with:
+          # 手动重跑旧版本时也要拿到那版代码，不能用 main
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 校验版本一致性
+        run: |
+          if (-not $env:TAG.StartsWith('v')) {
+            Write-Error "tag 必须以 v 开头，收到：$env:TAG"
+            exit 1
+          }
+          # 测试标签：v<version>-test / v<version>-test.N —— 只用于联调流水线，只校验基础版本，
+          # 不要求等于 package.json（发布本身仍应在正式标签上做，且应标成 prerelease）。
+          $base = $env:TAG -replace '-test(\.\d+)?$', ''
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne $base) {
+            Write-Error "tag $env:TAG 的基础版本（$base）与 package.json 的 version（v$version）不一致：先对齐版本号再打 tag。"
+            exit 1
+          }
+          if ($base -ne $env:TAG) { "测试标签：$env:TAG（基础版本 $base 一致）" } else { "版本一致：$env:TAG" }
+
+      - name: 构建 lib（四个入口）
+        run: pnpm run bundle
+
+      # shared-core.js（window.PetShared）是 src/shared 的 iife 产物，被 .gitignore 排除、不入库。
+      # 少了它，桌面 helper 的 constants.js 顶层拿不到 window.PetShared，渲染端直接崩、桌宠不显示。
+      # 发布链的 prepare.js 会构建它，但本流水线只跑 bundle，所以必须显式补这一步。
+      - name: 构建桌面共享核心（shared-core）
+        run: pnpm run build:desktop-core
+
+      - name: 类型检查
+        run: pnpm run typecheck
+
+      - name: 打包解包目录（CI 无本机 Electron，允许下载）
+        env:
+          DSH_PET_ALLOW_ELECTRON_DOWNLOAD: "1"
+        run: npm run dist
+
+      - name: 压缩为固定名 zip
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $inner = "dsh-pet-$version-win-x64"
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'dsh-pet-win-x64.zip'
+
+          New-Item -ItemType Directory -Path "stage/$inner" -Force | Out-Null
+          Copy-Item -Path "dist-app/win-unpacked/*" -Destination "stage/$inner" -Recurse
+
+          # 优先 7z（400 MB 级素材，Compress-Archive 明显更慢且吃内存）
+          if (Get-Command 7z -ErrorAction SilentlyContinue) {
+            Push-Location stage
+            7z a -tzip -mx=5 $zip $inner | Out-Null
+            Pop-Location
+          } else {
+            Compress-Archive -Path "stage/$inner" -DestinationPath $zip -CompressionLevel Optimal
+          }
+
+          $size = (Get-Item $zip).Length / 1MB
+          "zip: $zip（{0:N1} MB）" -f $size
+          if ($size -lt 50) { Write-Error "zip 体积异常（{0:N1} MB），疑似打包缺失" -f $size; exit 1 }
+
+      - name: 上传构建产物（发布失败也能下载排查）
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-pet-win-x64
+          path: dsh-pet-win-x64.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: 确认该 tag 的 Release 已存在
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 网页发布 Release 时 GitHub 会同时创建 tag，CI 启动比 Release 落库晚几秒：
+          # 最多重试 6 次、每次 10 秒，吃掉这个竞态。
+          for ($i = 1; $i -le 6; $i++) {
+            gh release view $env:TAG *> $null
+            if ($LASTEXITCODE -eq 0) { "release $env:TAG 已就绪"; exit 0 }
+            "尚未发现 release $env:TAG（第 $i 次），10 秒后重试…"
+            Start-Sleep -Seconds 10
+          }
+          Write-Error "找不到 tag $env:TAG 的 Release。请先在 GitHub 上发布该版本的 Release（写更新日志），再手动重跑本流水线。"
+          exit 1
+
+      - name: 挂载资产（只传文件，不改更新日志）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # zip 打在仓库根（GITHUB_WORKSPACE），而本 job 的 run 步骤默认 cwd 是 dsh-pet/：
+          # 必须用绝对路径，否则 gh 会报 no matches found（实测踩过）。
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'dsh-pet-win-x64.zip'
+          if (-not (Test-Path $zip)) { Write-Error "找不到待上传的 zip：$zip"; exit 1 }
+          "上传 {0}（{1:N1} MB）→ release {2}" -f $zip, ((Get-Item $zip).Length / 1MB), $env:TAG
+          gh release upload $env:TAG $zip --clobber
