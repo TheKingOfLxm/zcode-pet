@@ -7,9 +7,11 @@
  *   prompt-submit  thinking（收到新指令）
  *   pre-tool       working（task = 工具名 + 参数摘要）
  *   post-tool      result（整理）
- *   notification   waiting（task = 通知内容）
+ *   post-fail      error（工具执行失败；task = 工具名 + 错误摘要）
+ *   permission-request / notification
+ *                  waiting（task = 通知/授权内容）
  *   stop           success（本轮完成）
- *   session-end    清空外部槽回空闲
+ *   session-end    清空外部槽回空闲（ZCode 无此事件，保留给手动/其他宿主调用）
  *
  * 铁律：绝不向 stdout/stderr 输出（不污染 ZCode）、任何失败静默退出 0、
  *       单次 HTTP 1.5s 超时、诊断只写 ~/.zcode/zcode-pet/bridge.log。
@@ -235,6 +237,17 @@ async function main() {
     case 'post-tool':
       await api(runtime, 'POST', '/work-status', { state: 'result' });
       break;
+    case 'post-fail':
+      await api(runtime, 'POST', '/work-status', {
+        state: 'error',
+        task: cap40(
+          (hook.tool_name ?? hook.toolName ?? '工具') +
+            ' 失败: ' +
+            (hook.error?.message ?? hook.error_message ?? hook.error ?? ''),
+        ),
+      });
+      break;
+    case 'permission-request':
     case 'notification':
       await api(runtime, 'POST', '/work-status', {
         state: 'waiting',

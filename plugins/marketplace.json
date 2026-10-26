@@ -7,7 +7,7 @@
     {
       "name": "zcode-pet",
       "source": "./zcode-pet",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "把 ZCode 会话事件（思考/干活/等待/完成）转发给本地桌宠引擎，驱动六档工作状态动画与气泡。改编自 PC2005-cloud 的 dsh-pet：https://github.com/PC2005-cloud/dsh-pet （素材与形象版权归原作者所有，禁商用）",
       "displayName": "ZCode Desktop Pet Bridge",
       "displayName_i18n": {
